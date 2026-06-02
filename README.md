@@ -1,5 +1,9 @@
 # dscan
 
+[![CI](https://github.com/gor3a/disk-scan/actions/workflows/ci.yml/badge.svg)](https://github.com/gor3a/disk-scan/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/gor3a/disk-scan)](https://goreportcard.com/report/github.com/gor3a/disk-scan)
+
 Interactive terminal disk scanner & cleaner for macOS and Linux.
 
 `dscan` scans known cache/build/package locations plus the largest items in your
@@ -40,3 +44,16 @@ go build -o ~/.local/bin/dscan .
 - KEEP (browser/messaging/SSH) → shown but never selectable.
 - A confirm screen summarizes deletes vs trash vs tool-cleanups before anything
   is touched; `--dry-run` performs no deletion at all.
+
+## Contributing
+
+Contributions are welcome — especially new catalog entries for caches we don't
+yet recognize. See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the dev setup, the
+TDD workflow, the safety rules around deletion, and how to add a catalog entry.
+
+Please also read our **[Code of Conduct](CODE_OF_CONDUCT.md)**. To report a
+security issue, see **[SECURITY.md](SECURITY.md)** (do not open a public issue).
+
+## License
+
+[MIT](LICENSE) © gor3a
