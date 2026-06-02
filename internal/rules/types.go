@@ -70,7 +70,7 @@ const (
 type Source int
 
 const (
-	Catalog Source = iota
+	CatalogSource Source = iota
 	Heuristic
 )
 
