@@ -1115,7 +1115,7 @@ func scanAll(goos, home string, system bool) []rules.Item {
 		if e.Method == rules.Command {
 			items = append(items, rules.Item{
 				Label: e.Label, Category: e.Category, Tier: e.Tier,
-				Method: rules.Command, Command: e.Command, Source: rules.Catalog,
+				Method: rules.Command, Command: e.Command, Source: rules.CatalogSource,
 			})
 			continue
 		}
@@ -1127,7 +1127,7 @@ func scanAll(goos, home string, system bool) []rules.Item {
 		covered[path] = true
 		items = append(items, rules.Item{
 			Path: path, Label: e.Label, Bytes: size,
-			Category: e.Category, Tier: e.Tier, Method: e.Method, Source: rules.Catalog,
+			Category: e.Category, Tier: e.Tier, Method: e.Method, Source: rules.CatalogSource,
 		})
 	}
 	items = append(items, scan.TopNLargest(home, 20, covered)...)
