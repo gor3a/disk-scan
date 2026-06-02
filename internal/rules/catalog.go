@@ -5,8 +5,7 @@ import (
 	"strings"
 )
 
-// Entry is a catalog rule. PathTemplate uses "~" for the home dir and may end
-// with "/*" to mean "each child is its own item".
+// Entry is a catalog rule. PathTemplate uses "~" for the home dir.
 type Entry struct {
 	PathTemplate string
 	Label        string
@@ -14,13 +13,12 @@ type Entry struct {
 	Tier         Tier
 	Method       CleanMethod
 	Command      []string
-	GlobChildren bool // PathTemplate ended with /*
 }
 
-// Expand resolves "~" to home and strips a trailing "/*".
+// Expand resolves "~" to home.
 // Returns "" for command-token templates that do not start with "~".
 func (e Entry) Expand(home string) string {
-	p := strings.TrimSuffix(e.PathTemplate, "/*")
+	p := e.PathTemplate
 	if !strings.HasPrefix(p, "~") {
 		return ""
 	}
@@ -29,11 +27,7 @@ func (e Entry) Expand(home string) string {
 }
 
 func entry(tmpl, label string, cat Category, tier Tier) Entry {
-	e := Entry{PathTemplate: tmpl, Label: label, Category: cat, Tier: tier}
-	if strings.HasSuffix(tmpl, "/*") {
-		e.GlobChildren = true
-	}
-	return e
+	return Entry{PathTemplate: tmpl, Label: label, Category: cat, Tier: tier}
 }
 
 func cmd(tmpl, label string, cat Category, c ...string) Entry {
@@ -62,7 +56,7 @@ func Catalog(goos, home string) []Entry {
 	switch goos {
 	case "darwin":
 		out = append(out,
-			entry("~/Library/Caches/*", "~/Library/Caches", Caches, Safe),
+			entry("~/Library/Caches", "~/Library/Caches", Caches, Safe),
 			entry("~/Library/Logs", "~/Library/Logs", Caches, Safe),
 			entry("~/Library/Developer/Xcode/DerivedData", "Xcode DerivedData", BuildArtifacts, Safe),
 			entry("~/Library/Developer/Xcode/iOS DeviceSupport", "iOS DeviceSupport", BuildArtifacts, Safe),

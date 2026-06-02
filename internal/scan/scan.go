@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/gor3a/disk-scan/internal/rules"
 )
@@ -53,7 +54,7 @@ func TopNLargest(root string, n int, covered map[string]bool) []Found {
 	var items []Found
 	for _, de := range entries {
 		p := filepath.Join(root, de.Name())
-		if covered[p] {
+		if overlapsCovered(p, covered) {
 			continue
 		}
 		size, _ := DirSize(p)
@@ -69,4 +70,15 @@ func TopNLargest(root string, n int, covered map[string]bool) []Found {
 		items = items[:n]
 	}
 	return items
+}
+
+func overlapsCovered(p string, covered map[string]bool) bool {
+	for cov := range covered {
+		if p == cov ||
+			strings.HasPrefix(p+string(os.PathSeparator), cov+string(os.PathSeparator)) ||
+			strings.HasPrefix(cov+string(os.PathSeparator), p+string(os.PathSeparator)) {
+			return true
+		}
+	}
+	return false
 }

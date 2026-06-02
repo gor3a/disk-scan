@@ -63,3 +63,16 @@ func TestTopNSkipsCovered(t *testing.T) {
 		}
 	}
 }
+
+func TestTopNSkipsCoveredByPrefix(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "Library", "Caches", "x.bin"), 5000)
+	writeFile(t, filepath.Join(root, "other", "y.bin"), 100)
+	covered := map[string]bool{filepath.Join(root, "Library", "Caches"): true}
+	got := TopNLargest(root, 5, covered)
+	for _, it := range got {
+		if it.Path == filepath.Join(root, "Library") {
+			t.Error("parent of a covered path must be skipped to avoid double counting")
+		}
+	}
+}

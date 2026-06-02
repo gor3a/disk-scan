@@ -68,3 +68,33 @@ func TestTrashMovesReview(t *testing.T) {
 		t.Error("Review item should land in the trash dir")
 	}
 }
+
+func TestEmptyPathRefused(t *testing.T) {
+	r := Run([]rules.Item{{Path: "", Tier: rules.Safe}}, Options{})
+	if len(r.Actions) != 1 || r.Actions[0].Err == nil {
+		t.Error("empty-path item must produce an error, not a silent rm")
+	}
+	if r.FreedBytes != 0 {
+		t.Error("nothing should be freed for an empty path")
+	}
+}
+
+func TestTrashCollisionKeepsBoth(t *testing.T) {
+	trashDir := t.TempDir()
+	t.Setenv("DSCAN_TRASH_DIR", trashDir)
+	mk := func(parent string) string {
+		p := filepath.Join(parent, "dup")
+		if err := os.MkdirAll(p, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	a := mk(t.TempDir())
+	b := mk(t.TempDir())
+	Run([]rules.Item{{Path: a, Tier: rules.Review}}, Options{})
+	Run([]rules.Item{{Path: b, Tier: rules.Review}}, Options{})
+	entries, _ := os.ReadDir(trashDir)
+	if len(entries) != 2 {
+		t.Errorf("collision should keep both items, got %d entries in trash", len(entries))
+	}
+}
