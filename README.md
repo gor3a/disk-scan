@@ -18,10 +18,15 @@ selectable.
 dscan              # scan + interactive checklist
 dscan --system     # also scan system dirs (slow, may need permissions)
 dscan --dry-run    # preview what would be cleaned, delete nothing
+dscan --yes        # non-interactive: clean all SAFE items (caches/build), no TTY needed
+dscan --yes --dry-run   # preview the non-interactive clean
 dscan --version
 ```
 
-Keys: `↑/↓` move · `space` toggle · `enter` clean selected · `q` quit.
+Keys (interactive): `↑/↓` move · `space` toggle · `enter` review · `enter`/`y` confirm · `q` quit.
+
+`--yes` is for scripts/CI: it cleans only regenerable `SAFE` items and never
+touches `REVIEW`/`KEEP` data or runs tool-commands.
 
 ## Install
 

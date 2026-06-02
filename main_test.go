@@ -109,3 +109,16 @@ func TestEndToEndScanAndClean(t *testing.T) {
 		t.Error("real clean should report freed bytes")
 	}
 }
+
+func TestAutoSafeSelection(t *testing.T) {
+	items := []rules.Item{
+		{Label: "cache", Path: "/x/.npm", Tier: rules.Safe},                                         // included (Safe + Remove + path)
+		{Label: "brew cleanup", Tier: rules.Safe, Method: rules.Command, Command: []string{"brew"}}, // excluded (command)
+		{Label: "userdata", Path: "/x/data", Tier: rules.Review},                                    // excluded (review)
+		{Label: "ssh", Path: "/x/.ssh", Tier: rules.Keep},                                           // excluded (keep)
+	}
+	got := autoSafeSelection(items)
+	if len(got) != 1 || got[0].Label != "cache" {
+		t.Fatalf("autoSafeSelection should pick only the SAFE remove-path item, got %+v", got)
+	}
+}
