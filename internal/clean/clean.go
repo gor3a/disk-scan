@@ -85,7 +85,12 @@ func moveInto(src, dstDir string) error {
 	if err := os.MkdirAll(dstDir, 0o755); err != nil {
 		return err
 	}
-	dst := uniqueDest(filepath.Join(dstDir, filepath.Base(src)))
+	return moveTo(src, uniqueDest(filepath.Join(dstDir, filepath.Base(src))))
+}
+
+// moveTo moves src to the exact path dst, falling back to copy+remove across
+// filesystems (os.Rename fails with EXDEV between mounts).
+func moveTo(src, dst string) error {
 	if err := os.Rename(src, dst); err != nil {
 		if errors.Is(err, syscall.EXDEV) {
 			if cerr := copyTree(src, dst); cerr != nil {

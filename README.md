@@ -31,6 +31,12 @@ go build -o ~/.local/bin/dscan .
 ## Safety
 
 - SAFE (caches, build output) → hard-deleted (regenerates on next use).
-- REVIEW (user data) → moved to OS Trash (recoverable).
+- REVIEW (user data) → moved to the OS Trash, recoverable:
+  - macOS: via Finder, so items get "Put Back" support.
+  - Linux: via `gio trash`, or the XDG trash spec (`~/.local/share/Trash`
+    with `.trashinfo` records) when `gio` is unavailable.
+  - Trashing never overwrites an existing trashed item and works across
+    filesystems (copy + remove fallback).
 - KEEP (browser/messaging/SSH) → shown but never selectable.
-- `--dry-run` performs no deletion.
+- A confirm screen summarizes deletes vs trash vs tool-cleanups before anything
+  is touched; `--dry-run` performs no deletion at all.
