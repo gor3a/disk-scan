@@ -81,3 +81,16 @@ func moveInto(src, dstDir string) error {
 	}
 	return os.Rename(src, filepath.Join(dstDir, filepath.Base(src)))
 }
+
+// FreedBytesOrPlanned returns FreedBytes, or for a dry run the bytes that would
+// be freed by the recorded actions.
+func (r Result) FreedBytesOrPlanned(dry bool) int64 {
+	if !dry {
+		return r.FreedBytes
+	}
+	var total int64
+	for _, a := range r.Actions {
+		total += a.Item.Bytes
+	}
+	return total
+}
