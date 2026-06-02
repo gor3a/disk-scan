@@ -79,8 +79,11 @@ func (m *programModel) View() string {
 			cursor = "> "
 		}
 		check := "[ ]"
-		if !it.Selectable() {
+		switch {
+		case !it.Selectable():
 			check = "[-]"
+		case m.model.IsSelected(i):
+			check = "[x]"
 		}
 		out += fmt.Sprintf("%s%s %-32s %10s  %s\n", cursor, check, it.Label, humized(it.Bytes), it.Tier)
 	}

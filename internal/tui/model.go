@@ -31,6 +31,9 @@ func (m *Model) Toggle(i int) {
 	}
 }
 
+// IsSelected reports whether the item at index i is currently selected.
+func (m *Model) IsSelected(i int) bool { return m.selected[i] }
+
 // SelectedBytes is the running freed-space total of selected items.
 func (m *Model) SelectedBytes() int64 {
 	var total int64

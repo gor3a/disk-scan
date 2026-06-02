@@ -49,3 +49,18 @@ func TestSelectedReturnsItems(t *testing.T) {
 		t.Errorf("Selected() = %+v, want [userdata]", sel)
 	}
 }
+
+func TestIsSelected(t *testing.T) {
+	m := New(sample())
+	if m.IsSelected(0) {
+		t.Error("nothing selected initially")
+	}
+	m.Toggle(0)
+	if !m.IsSelected(0) {
+		t.Error("index 0 should be selected after Toggle")
+	}
+	m.Toggle(2) // Keep -> no-op
+	if m.IsSelected(2) {
+		t.Error("Keep item must never read as selected")
+	}
+}
