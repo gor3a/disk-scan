@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-02
 **Status:** Approved for planning
-**Repo:** `gor3a/disk-scan` (private) — independent git repo living at `dotai/dscan/`, ignored by dotai.
+**Repo:** `gor3a/disk-scan` — independent git repo.
 **Command:** `dscan`
 
 ## Goal
@@ -19,8 +19,8 @@ real user data to the OS Trash. Built so a future GUI can reuse the engine.
 | Interaction | Interactive TUI checklist (Bubble Tea): scan → live grouped list → toggle items → confirm → clean. |
 | Tech | Go, single static binary. Bubble Tea for the TUI. |
 | Safety | Smart: `SAFE` caches → `rm`; `REVIEW`/user data → OS Trash (recoverable); `KEEP` list never selectable; dry-run-style confirmation before any delete. |
-| Layout | App at `dotai/dscan/`, its **own** git repo; dotai `.gitignore` excludes `/dscan/`. Self-contained (docs/spec/plan/tests/README inside). |
-| Remote | `gh repo create gor3a/disk-scan --private`; commit every step and push. |
+| Layout | Its **own** self-contained git repo (docs/spec/tests/README inside). |
+| Remote | `gor3a/disk-scan`; commit every step and push. |
 | GUI | Deferred (YAGNI). Engine packages stay terminal-agnostic so a Wails/web GUI can reuse them. |
 
 ## Architecture
@@ -29,7 +29,7 @@ Single Go binary; four decoupled packages plus `main`:
 
 ```
 dscan/
-├─ docs/            spec.md, plan.md
+├─ docs/            spec.md
 ├─ internal/
 │  ├─ scan/         concurrent filesystem walkers → []Item, live progress
 │  ├─ rules/        OS-aware catalog + classifier (category, tier, reversibility)
@@ -128,11 +128,9 @@ The selection/total logic lives in a pure model struct, testable headless.
 ## Cross-platform & distribution
 
 - `runtime.GOOS` switches the catalog and the trash backend; all other code shared.
-- Source in dotai at `dscan/`. `install.sh` gains a step:
-  - if `go` is present → `go build -o "$HOME/.local/bin/dscan" "$DOTAI_DIR/dscan"`,
-    ensure `~/.local/bin` is on `PATH`;
-  - else → print how to install Go (or fetch a prebuilt binary).
-- The only dotai-repo change is adding `/dscan/` to `.gitignore`.
+- Install via `go install github.com/gor3a/disk-scan@latest`, or build from a
+  checkout: `go build -o "$HOME/.local/bin/dscan" .` (ensure `~/.local/bin` is on
+  `PATH`). Requires a Go toolchain.
 
 ## Testing (Go, table-driven)
 

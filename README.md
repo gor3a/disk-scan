@@ -30,11 +30,16 @@ touches `REVIEW`/`KEEP` data or runs tool-commands.
 
 ## Install
 
-Built from the dotai repo by `install.sh` (`go build` → `~/.local/bin/dscan`),
-or manually:
+With a Go toolchain installed:
 
 ```
-go build -o ~/.local/bin/dscan .
+go install github.com/gor3a/disk-scan@latest   # installs the `disk-scan` binary into $GOBIN
+```
+
+Or build from a checkout as `dscan`:
+
+```
+go build -o ~/.local/bin/dscan .   # ensure ~/.local/bin is on your PATH
 ```
 
 ## Safety
