@@ -1,0 +1,5 @@
+{"event":"disk","disk":{"used":342000000000,"free":198000000000,"total":512000000000}}
+{"event":"item","item":{"id":"/Users/me/.cache","path":"/Users/me/.cache","label":"~/.cache","bytes":3100000000,"category":"Caches","tier":"SAFE","method":"remove","source":"catalog","selectable":true}}
+{"event":"progress","scanned":1}
+{"event":"scanDone","reclaimable":3100000000}
+{"event":"cleanResult","freed":3100000000,"trashed":0}
