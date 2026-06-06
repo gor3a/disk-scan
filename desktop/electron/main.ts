@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'node:path'
 import { existsSync, writeFileSync } from 'node:fs'
 import { Sidecar } from './sidecar'
@@ -69,6 +69,14 @@ function createWindow() {
 }
 
 ipcMain.on('dscan:send', (_e, req: Request) => sidecar?.send(req))
+
+ipcMain.handle('dscan:pickFolder', async () => {
+  const res = await dialog.showOpenDialog({
+    properties: ['openDirectory'],
+    defaultPath: app.getPath('home'),
+  })
+  return res.canceled || res.filePaths.length === 0 ? null : res.filePaths[0]
+})
 
 app.whenReady().then(createWindow)
 app.on('window-all-closed', () => {

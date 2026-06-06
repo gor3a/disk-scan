@@ -11,6 +11,7 @@ export interface ItemDTO {
   method: Method
   source: 'catalog' | 'heuristic'
   selectable: boolean
+  modified?: number // unix secs, projects only
   command?: string[]
 }
 
@@ -24,13 +25,13 @@ export type DscanEvent =
   | { event: 'disk'; disk: Disk }
   | { event: 'item'; item: ItemDTO }
   // numeric fields are optional: Go omits them when zero (omitempty)
-  | { event: 'progress'; scanned?: number; phase?: string }
+  | { event: 'progress'; scanned?: number; phase?: string; bytes?: number; path?: string }
   | { event: 'scanDone'; reclaimable?: number }
   | { event: 'cleanResult'; freed?: number; trashed?: number; errors?: string[] }
   | { event: 'error'; message: string }
 
 export type Request =
-  | { cmd: 'scan'; system?: boolean }
+  | { cmd: 'scan'; kind?: 'caches' | 'projects'; root?: string; system?: boolean }
   | { cmd: 'clean'; ids: string[]; dryRun?: boolean }
   | { cmd: 'cancel' }
 
