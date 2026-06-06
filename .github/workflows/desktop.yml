@@ -30,7 +30,10 @@ jobs:
 
       - name: Install desktop deps
         working-directory: desktop
-        run: npm ci
+        # npm install (not ci): the committed lockfile is generated on one
+        # platform, and npm ci strictly rejects the per-OS optional binaries
+        # (electron-builder/rollup/esbuild) it lacks for the other runners.
+        run: npm install --no-audit --no-fund
 
       - name: Test
         run: |
