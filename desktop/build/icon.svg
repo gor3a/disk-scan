@@ -10,12 +10,16 @@
     </linearGradient>
   </defs>
 
-  <rect width="1024" height="1024" rx="232" fill="url(#tile)"/>
-  <g transform="translate(512,512)">
-    <circle r="300" fill="none" stroke="#E4DCCD" stroke-width="92"/>
-    <circle r="300" fill="none" stroke="url(#em)" stroke-width="92" stroke-linecap="round"
-            stroke-dasharray="1470 415" transform="rotate(-90)"/>
-    <path d="M-138,14 L-38,128 L150,-128" fill="none" stroke="url(#em)"
-          stroke-width="86" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- macOS app-icon grid: 824x824 squircle centered in 1024 (≈100px padding),
+       so the dock renders it the same size as other apps. -->
+  <g transform="translate(100,100) scale(0.8047)">
+    <rect width="1024" height="1024" rx="232" fill="url(#tile)"/>
+    <g transform="translate(512,512)">
+      <circle r="300" fill="none" stroke="#E4DCCD" stroke-width="92"/>
+      <circle r="300" fill="none" stroke="url(#em)" stroke-width="92" stroke-linecap="round"
+              stroke-dasharray="1470 415" transform="rotate(-90)"/>
+      <path d="M-138,14 L-38,128 L150,-128" fill="none" stroke="url(#em)"
+            stroke-width="86" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
   </g>
 </svg>
