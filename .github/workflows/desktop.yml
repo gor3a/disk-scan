@@ -5,6 +5,9 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
+permissions:
+  contents: write # create the GitHub Release and upload installers
+
 jobs:
   build:
     strategy:
