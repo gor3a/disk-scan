@@ -1,11 +1,8 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
-import { join, dirname } from 'node:path'
+import { join } from 'node:path'
 import { existsSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { Sidecar } from './sidecar'
 import type { Request } from '../src/lib/protocol'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
 
 // resolveSidecar: when packaged, use the binary shipped under resources/ by
 // electron-builder; in dev, use the repo-built `desktop/dscan-dev` binary.
