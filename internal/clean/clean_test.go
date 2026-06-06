@@ -35,6 +35,62 @@ func TestRemoveDeletesSafe(t *testing.T) {
 	}
 }
 
+func TestBestEffortRemoveDeletesEverythingWhenAllowed(t *testing.T) {
+	box := filepath.Join(t.TempDir(), "box")
+	if err := os.MkdirAll(filepath.Join(box, "a"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(box, "a", "f"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	skipped, err := bestEffortRemove(box)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if skipped != 0 {
+		t.Errorf("skipped = %d, want 0", skipped)
+	}
+	if _, e := os.Stat(box); !os.IsNotExist(e) {
+		t.Error("box should be fully removed")
+	}
+}
+
+func TestBestEffortRemoveSkipsProtectedWithoutError(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores permission bits")
+	}
+	box := filepath.Join(t.TempDir(), "box")
+	open := filepath.Join(box, "open")
+	prot := filepath.Join(box, "prot")
+	for _, d := range []string{open, prot} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(d, "f"), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Make prot unreadable/unremovable, like a TCC-protected macOS cache.
+	if err := os.Chmod(prot, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(prot, 0o755) }) // let TempDir cleanup succeed
+
+	skipped, err := bestEffortRemove(box)
+	if err != nil {
+		t.Fatalf("permission skips must not be fatal, got %v", err)
+	}
+	if skipped == 0 {
+		t.Error("expected the protected dir to be skipped")
+	}
+	if _, e := os.Stat(open); !os.IsNotExist(e) {
+		t.Error("the unprotected subtree should have been removed")
+	}
+	if _, e := os.Stat(prot); e != nil {
+		t.Error("protected dir (and its container) should be kept")
+	}
+}
+
 func TestKeepIsRejected(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "important")

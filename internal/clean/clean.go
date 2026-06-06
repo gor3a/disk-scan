@@ -60,7 +60,8 @@ func perform(it rules.Item, method rules.CleanMethod) error {
 	}
 	switch method {
 	case rules.Remove:
-		return os.RemoveAll(it.Path)
+		_, err := bestEffortRemove(it.Path)
+		return err
 	case rules.Trash:
 		return trash(it.Path)
 	case rules.Command:
@@ -68,6 +69,61 @@ func perform(it rules.Item, method rules.CleanMethod) error {
 	default:
 		return os.RemoveAll(it.Path)
 	}
+}
+
+// bestEffortRemove deletes path's tree depth-first, returning the count of
+// entries it had to skip because the OS forbids removing them (e.g. macOS
+// TCC/SIP-protected caches like ~/Library/Caches/com.apple.HomeKit). Permission
+// errors are not fatal: we free what we can and leave protected items in place,
+// keeping a container directory when some of its children survived. Only a
+// genuine (non-permission) failure is returned as an error.
+func bestEffortRemove(path string) (skipped int, err error) {
+	info, statErr := os.Lstat(path)
+	if statErr != nil {
+		if os.IsNotExist(statErr) {
+			return 0, nil
+		}
+		if os.IsPermission(statErr) {
+			return 1, nil
+		}
+		return 0, statErr
+	}
+
+	// Recurse into real directories (never follow symlinks).
+	if info.IsDir() && info.Mode()&os.ModeSymlink == 0 {
+		entries, readErr := os.ReadDir(path)
+		if readErr != nil {
+			if os.IsPermission(readErr) {
+				return 1, nil // can't even list it — protected
+			}
+			return 0, readErr
+		}
+		childSkipped := 0
+		for _, e := range entries {
+			s, er := bestEffortRemove(filepath.Join(path, e.Name()))
+			if er != nil {
+				return skipped + s, er
+			}
+			childSkipped += s
+		}
+		skipped += childSkipped
+		if childSkipped > 0 {
+			// Protected children remain, so the directory can't be removed.
+			// That is expected, not an error — keep the container.
+			return skipped, nil
+		}
+	}
+
+	if rmErr := os.Remove(path); rmErr != nil {
+		if os.IsNotExist(rmErr) {
+			return skipped, nil
+		}
+		if os.IsPermission(rmErr) {
+			return skipped + 1, nil // protected — skip, not fatal
+		}
+		return skipped, rmErr
+	}
+	return skipped, nil
 }
 
 func runCommand(argv []string) error {
