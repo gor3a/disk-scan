@@ -16,6 +16,16 @@ func writeTree(t *testing.T, dir string, size int) error {
 	return os.WriteFile(filepath.Join(dir, "blob"), make([]byte, size), 0o644)
 }
 
+func mkfileP(t *testing.T, path string, size int) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, make([]byte, size), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func contains(items []rules.Item, path string) bool {
 	for _, it := range items {
 		if it.Path == path {
