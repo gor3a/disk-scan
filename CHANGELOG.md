@@ -6,6 +6,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-06-06
+
+### Added
+
+- **Projects (node_modules) cleaner** — a new Projects tab finds `node_modules`
+  directories under a chosen folder (default `~`, via a native folder picker),
+  shows each project's size and last-used date, auto-selects stale ones
+  (untouched > 30 days), and reclaims their space. Nested `node_modules` are
+  skipped; the walk is single-filesystem and permission-tolerant.
+- **Progressive scanning** — both tabs now render results as they stream, with a
+  live phase/count/size line, the current path being walked, and a **Stop**
+  button. Cleaning works **mid-scan**: cleaned rows disappear with a "Reclaimed"
+  summary while the scan keeps running.
+
 ## [0.2.0] - 2026-06-06
 
 ### Added
@@ -53,6 +67,7 @@ Initial release.
   required) for scripts/CI; `--system` to include system dirs; `--version`.
 - Cross-platform: macOS and Linux. Builds and tests run on both in CI.
 
-[Unreleased]: https://github.com/gor3a/disk-scan/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/gor3a/disk-scan/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/gor3a/disk-scan/releases/tag/v0.2.1
 [0.2.0]: https://github.com/gor3a/disk-scan/releases/tag/v0.2.0
 [0.1.0]: https://github.com/gor3a/disk-scan/releases/tag/v0.1.0
