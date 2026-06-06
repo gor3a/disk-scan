@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/gor3a/disk-scan/internal/clean"
+	"github.com/gor3a/disk-scan/internal/engine"
 	"github.com/gor3a/disk-scan/internal/rules"
 )
 
@@ -41,7 +42,7 @@ func TestEndToEndScanAndClean(t *testing.T) {
 	mkfile(t, filepath.Join(home, ".ssh", "id_rsa"), 2000)              // KEEP secret
 	mkfile(t, filepath.Join(home, "BigProject", "media", "clip"), 9000) // REVIEW (heuristic)
 
-	items := scanAll(runtime.GOOS, home, false)
+	items := engine.ScanAll(runtime.GOOS, home, false, nil)
 
 	// --- classification ---
 	npm, ok := findByPathSuffix(items, filepath.Join(".npm"))
@@ -117,7 +118,7 @@ func TestAutoSafeSelection(t *testing.T) {
 		{Label: "userdata", Path: "/x/data", Tier: rules.Review},                                    // excluded (review)
 		{Label: "ssh", Path: "/x/.ssh", Tier: rules.Keep},                                           // excluded (keep)
 	}
-	got := autoSafeSelection(items)
+	got := engine.AutoSafeSelection(items)
 	if len(got) != 1 || got[0].Label != "cache" {
 		t.Fatalf("autoSafeSelection should pick only the SAFE remove-path item, got %+v", got)
 	}

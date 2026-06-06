@@ -6,13 +6,11 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"sort"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/gor3a/disk-scan/internal/clean"
-	"github.com/gor3a/disk-scan/internal/rules"
-	"github.com/gor3a/disk-scan/internal/scan"
+	"github.com/gor3a/disk-scan/internal/engine"
 )
 
 var (
@@ -30,12 +28,12 @@ func main() {
 		return
 	}
 	home, _ := os.UserHomeDir()
-	items := scanAll(runtime.GOOS, home, *flagSystem)
+	items := engine.ScanAll(runtime.GOOS, home, *flagSystem, nil)
 
 	// Non-interactive mode: clean the regenerable SAFE items and exit. Useful
 	// for scripts/CI and any context without a TTY.
 	if *flagYes {
-		res := clean.Run(autoSafeSelection(items), clean.Options{DryRun: *flagDryRun})
+		res := clean.Run(engine.AutoSafeSelection(items), clean.Options{DryRun: *flagDryRun})
 		report(res, *flagDryRun)
 		return
 	}
@@ -53,52 +51,6 @@ func main() {
 	}
 	res := clean.Run(pm.model.Selected(), clean.Options{DryRun: *flagDryRun})
 	report(res, *flagDryRun)
-}
-
-// autoSafeSelection picks the regenerable SAFE items for non-interactive
-// cleaning. It deliberately excludes REVIEW/KEEP items and tool-command entries,
-// so `--yes` never runs external tools or touches user data.
-func autoSafeSelection(items []rules.Item) []rules.Item {
-	var out []rules.Item
-	for _, it := range items {
-		if it.Tier == rules.Safe && it.Path != "" && it.EffectiveMethod() == rules.Remove {
-			out = append(out, it)
-		}
-	}
-	return out
-}
-
-// scanAll runs the catalog pass then the heuristic pass, de-duped.
-func scanAll(goos, home string, system bool) []rules.Item {
-	var items []rules.Item
-	covered := map[string]bool{}
-	for _, e := range rules.Catalog(goos, home) {
-		if e.Method == rules.Command {
-			items = append(items, rules.Item{
-				Label: e.Label, Category: e.Category, Tier: e.Tier,
-				Method: rules.Command, Command: e.Command, Source: rules.CatalogSource,
-			})
-			continue
-		}
-		path := e.Expand(home)
-		size, _ := scan.DirSize(path)
-		if size == 0 {
-			continue
-		}
-		covered[path] = true
-		items = append(items, rules.Item{
-			Path: path, Label: e.Label, Bytes: size,
-			Category: e.Category, Tier: e.Tier, Method: e.Method, Source: rules.CatalogSource,
-		})
-	}
-	items = append(items, scan.TopNLargest(home, 20, covered)...)
-	sort.SliceStable(items, func(i, j int) bool {
-		if items[i].Tier != items[j].Tier {
-			return items[i].Tier < items[j].Tier
-		}
-		return items[i].Bytes > items[j].Bytes
-	})
-	return items
 }
 
 func report(res clean.Result, dry bool) {
