@@ -90,6 +90,41 @@ func TestServeCancelStillFinishesCleanly(t *testing.T) {
 	}
 }
 
+func TestServeScanProjects(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "proj", "node_modules", "x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "proj", "node_modules", "x", "f"), make([]byte, 4096), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "proj", "main.js"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out strings.Builder
+	in := strings.NewReader(`{"cmd":"scan","kind":"projects","root":"` + root + `"}` + "\n")
+	if err := Run(in, &out, "darwin", root); err != nil {
+		t.Fatal(err)
+	}
+
+	var sawProjItem, sawProjPhase, sawDone bool
+	for _, e := range decodeEvents(t, out.String()) {
+		if e.Event == "item" && e.Item != nil && e.Item.Category == "Projects" && e.Item.Modified > 0 {
+			sawProjItem = true
+		}
+		if e.Event == "progress" && e.Phase == "projects" {
+			sawProjPhase = true
+		}
+		if e.Event == "scanDone" {
+			sawDone = true
+		}
+	}
+	if !sawProjItem || !sawProjPhase || !sawDone {
+		t.Fatalf("item=%v phase=%v done=%v", sawProjItem, sawProjPhase, sawDone)
+	}
+}
+
 func TestServeCleanDryRunRemovesNothing(t *testing.T) {
 	home := t.TempDir()
 	target := filepath.Join(home, ".cache", "x")

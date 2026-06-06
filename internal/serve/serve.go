@@ -37,7 +37,7 @@ func Run(in io.Reader, out io.Writer, goos, home string) error {
 	for req := range reqs {
 		switch req.Cmd {
 		case "scan":
-			s.startScan(req.System)
+			s.startScan(req)
 		case "clean":
 			s.startClean(req.IDs, req.DryRun)
 		case "cancel":
@@ -55,7 +55,6 @@ type server struct {
 	byID       map[string]rules.Item
 	cancel     chan struct{}
 	wg         sync.WaitGroup // all in-flight ops (drained before Run returns)
-	scanWG     sync.WaitGroup // active scans (clean waits on these)
 }
 
 func (s *server) emit(e Event) {
@@ -64,7 +63,7 @@ func (s *server) emit(e Event) {
 	_ = s.enc.Encode(e) // Encoder appends the newline
 }
 
-func (s *server) startScan(system bool) {
+func (s *server) startScan(req Request) {
 	s.cancelScan() // supersede any in-flight scan
 	cancel := make(chan struct{})
 	s.mu.Lock()
@@ -73,12 +72,33 @@ func (s *server) startScan(system bool) {
 	s.mu.Unlock()
 
 	s.wg.Add(1)
-	s.scanWG.Add(1)
 	go func() {
 		defer s.wg.Done()
-		defer s.scanWG.Done()
-		s.runScan(system, cancel)
+		if req.Kind == "projects" {
+			s.runScanProjects(req.Root, cancel)
+		} else {
+			s.runScan(req.System, cancel)
+		}
 	}()
+}
+
+func (s *server) runScanProjects(root string, cancel <-chan struct{}) {
+	if root == "" {
+		root = s.home
+	}
+	n := 0
+	var bytes int64
+	engine.FindProjects(root, func(p engine.Project) {
+		dto := projectDTO(p)
+		s.mu.Lock()
+		s.byID[dto.ID] = rules.Item{Path: p.Path, Label: dto.Label, Bytes: p.Bytes, Tier: rules.Safe, Method: rules.Remove}
+		s.mu.Unlock()
+		s.emit(Event{Event: "item", Item: &dto})
+		n++
+		bytes += p.Bytes
+		s.emit(Event{Event: "progress", Phase: "projects", Scanned: n, Bytes: bytes, Path: p.Path})
+	}, cancel)
+	s.emit(Event{Event: "scanDone", Reclaimable: bytes})
 }
 
 func (s *server) runScan(system bool, cancel <-chan struct{}) {
@@ -87,6 +107,7 @@ func (s *server) runScan(system bool, cancel <-chan struct{}) {
 	}
 
 	n := 0
+	var bytes int64
 	items := engine.ScanAll(s.goos, s.home, system, func(it rules.Item) {
 		dto := ToDTO(it)
 		s.mu.Lock()
@@ -94,7 +115,12 @@ func (s *server) runScan(system bool, cancel <-chan struct{}) {
 		s.mu.Unlock()
 		s.emit(Event{Event: "item", Item: &dto})
 		n++
-		s.emit(Event{Event: "progress", Scanned: n})
+		bytes += it.Bytes
+		phase := "caches"
+		if it.Source == rules.Heuristic {
+			phase = "largeFiles"
+		}
+		s.emit(Event{Event: "progress", Phase: phase, Scanned: n, Bytes: bytes})
 	}, cancel)
 
 	// Reclaimable matches the GUI's default selection: SAFE, regenerable,
@@ -112,8 +138,8 @@ func (s *server) startClean(ids []string, dryRun bool) {
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		s.scanWG.Wait() // ensure the scan has finished populating byID
-
+		// No barrier: clean acts on whatever the scan has streamed into byID so
+		// far, so the user can clean found items while the scan keeps running.
 		s.mu.Lock()
 		var items []rules.Item
 		for _, id := range ids {
