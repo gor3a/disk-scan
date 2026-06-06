@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { join } from 'node:path'
 import { existsSync, writeFileSync } from 'node:fs'
 import { Sidecar } from './sidecar'
@@ -78,6 +78,12 @@ function createWindow() {
 }
 
 ipcMain.on('dscan:send', (_e, req: Request) => sidecar?.send(req))
+
+// Open external links (e.g. the Ko-fi donation page) in the user's browser.
+// Restricted to https to avoid opening arbitrary schemes from the renderer.
+ipcMain.on('dscan:openExternal', (_e, url: string) => {
+  if (typeof url === 'string' && url.startsWith('https://')) shell.openExternal(url)
+})
 
 ipcMain.handle('dscan:pickFolder', async () => {
   const res = await dialog.showOpenDialog({

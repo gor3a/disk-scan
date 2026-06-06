@@ -15,6 +15,7 @@ declare global {
     dscan: {
       send: (r: Request) => void
       pickFolder: () => Promise<string | null>
+      openExternal: (url: string) => void
       onEvent: (cb: (e: DscanEvent) => void) => () => void
     }
   }
@@ -123,6 +124,17 @@ export default function App() {
           {s.result.errors.length > 0 && ` · ${s.result.errors.length} skipped`}
         </div>
       )}
+
+      <footer className="flex items-center border-t border-line bg-surface px-5 py-1.5 text-[11.5px] text-ink-soft">
+        <span>dscan</span>
+        <button
+          onClick={() => window.dscan.openExternal('https://ko-fi.com/gor3a')}
+          className="ml-auto rounded-md px-2 py-0.5 transition-colors hover:bg-paper hover:text-ink"
+          title="Support dscan on Ko-fi"
+        >
+          Support ☕
+        </button>
+      </footer>
     </div>
   )
 }
