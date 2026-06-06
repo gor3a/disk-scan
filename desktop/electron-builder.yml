@@ -10,10 +10,12 @@ extraResources:
     to: dscan
 mac:
   target: dmg
+  icon: build/icon.icns
   category: public.app-category.utilities
   # unsigned for MVP — no identity / notarization
 linux:
   target: [AppImage, deb]
+  icon: build/icon.png
   category: Utility
 publish:
   provider: github
