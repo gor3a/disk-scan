@@ -42,7 +42,7 @@ func TestEndToEndScanAndClean(t *testing.T) {
 	mkfile(t, filepath.Join(home, ".ssh", "id_rsa"), 2000)              // KEEP secret
 	mkfile(t, filepath.Join(home, "BigProject", "media", "clip"), 9000) // REVIEW (heuristic)
 
-	items := engine.ScanAll(runtime.GOOS, home, false, nil)
+	items := engine.ScanAll(runtime.GOOS, home, false, nil, nil)
 
 	// --- classification ---
 	npm, ok := findByPathSuffix(items, filepath.Join(".npm"))

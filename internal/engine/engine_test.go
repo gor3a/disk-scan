@@ -17,7 +17,7 @@ func TestScanAllStreamsAndReturns(t *testing.T) {
 	var streamed []rules.Item
 	got := ScanAll("linux", home, false, func(it rules.Item) {
 		streamed = append(streamed, it)
-	})
+	}, nil)
 
 	if len(got) == 0 {
 		t.Fatalf("expected items, got none")

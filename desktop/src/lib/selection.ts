@@ -3,8 +3,15 @@ import type { ItemDTO, Tier } from './protocol'
 export type Selection = Set<string>
 export type GroupState = 'all' | 'some' | 'none'
 
+// defaultSelection pre-checks only regenerable SAFE caches — never tool-commands
+// (brew/simctl/docker), which can be slow or destructive and must be opt-in.
+// Mirrors the CLI's autoSafeSelection.
 export function defaultSelection(items: ItemDTO[]): Selection {
-  return new Set(items.filter((i) => i.selectable && i.tier === 'SAFE').map((i) => i.id))
+  return new Set(
+    items
+      .filter((i) => i.selectable && i.tier === 'SAFE' && i.method !== 'command')
+      .map((i) => i.id),
+  )
 }
 
 export function toggle(sel: Selection, id: string, items?: ItemDTO[]): Selection {

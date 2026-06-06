@@ -1,7 +1,7 @@
 import type { DscanEvent, Disk, ItemDTO } from './lib/protocol'
 import { defaultSelection, type Selection } from './lib/selection'
 
-export type Phase = 'idle' | 'scanning' | 'list' | 'confirm' | 'done'
+export type Phase = 'idle' | 'scanning' | 'list' | 'confirm' | 'cleaning' | 'done'
 
 export interface CleanResult {
   freed: number
@@ -21,6 +21,7 @@ export interface State {
 
 export type Action =
   | { type: 'startScan' }
+  | { type: 'startClean' }
   | { type: 'event'; event: DscanEvent }
   | { type: 'toGate' }
   | { type: 'back' }
@@ -34,6 +35,8 @@ export function reduce(s: State, a: Action): State {
   switch (a.type) {
     case 'startScan':
       return { ...initialState(), phase: 'scanning' }
+    case 'startClean':
+      return { ...s, phase: 'cleaning' }
     case 'toGate':
       return { ...s, phase: 'confirm' }
     case 'back':
@@ -59,11 +62,22 @@ function applyEvent(s: State, e: DscanEvent): State {
       return { ...s, items }
     }
     case 'progress':
-      return { ...s, scanned: e.scanned }
+      // Go omits zero-valued numerics (omitempty), so coerce undefined → 0 to
+      // avoid NaN downstream.
+      return { ...s, scanned: e.scanned ?? 0 }
     case 'scanDone':
-      return { ...s, phase: 'list', reclaimable: e.reclaimable, selection: defaultSelection(s.items) }
+      return {
+        ...s,
+        phase: 'list',
+        reclaimable: e.reclaimable ?? 0,
+        selection: defaultSelection(s.items),
+      }
     case 'cleanResult':
-      return { ...s, phase: 'done', result: { freed: e.freed, trashed: e.trashed, errors: e.errors ?? [] } }
+      return {
+        ...s,
+        phase: 'done',
+        result: { freed: e.freed ?? 0, trashed: e.trashed ?? 0, errors: e.errors ?? [] },
+      }
     case 'error':
       return s
   }

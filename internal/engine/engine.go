@@ -13,11 +13,15 @@ import (
 // ScanAll runs the catalog pass then the heuristic pass, de-duped and sorted.
 // onItem (may be nil) is called for each item as it is discovered, so a UI can
 // stream rows in. Catalog items stream as they are measured; heuristic (top-N)
-// items stream after.
-func ScanAll(goos, home string, system bool, onItem func(rules.Item)) []rules.Item {
+// items stream after. cancel (may be nil) aborts the scan early, returning
+// whatever was collected so far.
+func ScanAll(goos, home string, system bool, onItem func(rules.Item), cancel <-chan struct{}) []rules.Item {
 	var items []rules.Item
 	covered := map[string]bool{}
 	for _, e := range rules.Catalog(goos, home) {
+		if canceled(cancel) {
+			break
+		}
 		if e.Method == rules.Command {
 			it := rules.Item{
 				Label: e.Label, Category: e.Category, Tier: e.Tier,
@@ -30,7 +34,7 @@ func ScanAll(goos, home string, system bool, onItem func(rules.Item)) []rules.It
 			continue
 		}
 		path := e.Expand(home)
-		size, _ := scan.DirSize(path)
+		size, _ := scan.DirSizeCancel(path, cancel)
 		if size == 0 {
 			continue
 		}
@@ -44,13 +48,15 @@ func ScanAll(goos, home string, system bool, onItem func(rules.Item)) []rules.It
 			onItem(it)
 		}
 	}
-	heur := scan.TopNLargest(home, 20, covered)
-	for _, it := range heur {
-		if onItem != nil {
-			onItem(it)
+	if !canceled(cancel) {
+		heur := scan.TopNLargestCancel(home, 20, covered, cancel)
+		for _, it := range heur {
+			if onItem != nil {
+				onItem(it)
+			}
 		}
+		items = append(items, heur...)
 	}
-	items = append(items, heur...)
 	sort.SliceStable(items, func(i, j int) bool {
 		if items[i].Tier != items[j].Tier {
 			return items[i].Tier < items[j].Tier
@@ -58,6 +64,16 @@ func ScanAll(goos, home string, system bool, onItem func(rules.Item)) []rules.It
 		return items[i].Bytes > items[j].Bytes
 	})
 	return items
+}
+
+// canceled reports whether cancel has been closed (nil is never ready).
+func canceled(cancel <-chan struct{}) bool {
+	select {
+	case <-cancel:
+		return true
+	default:
+		return false
+	}
 }
 
 // AutoSafeSelection picks regenerable SAFE path items (no REVIEW/KEEP, no

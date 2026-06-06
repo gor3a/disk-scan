@@ -23,9 +23,10 @@ export interface Disk {
 export type DscanEvent =
   | { event: 'disk'; disk: Disk }
   | { event: 'item'; item: ItemDTO }
-  | { event: 'progress'; scanned: number; phase?: string }
-  | { event: 'scanDone'; reclaimable: number }
-  | { event: 'cleanResult'; freed: number; trashed: number; errors?: string[] }
+  // numeric fields are optional: Go omits them when zero (omitempty)
+  | { event: 'progress'; scanned?: number; phase?: string }
+  | { event: 'scanDone'; reclaimable?: number }
+  | { event: 'cleanResult'; freed?: number; trashed?: number; errors?: string[] }
   | { event: 'error'; message: string }
 
 export type Request =

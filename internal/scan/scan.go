@@ -14,7 +14,11 @@ import (
 
 // DirSize returns the total bytes under path (recursively). A missing path
 // returns (0, nil). Permission errors on individual entries are ignored.
-func DirSize(path string) (int64, error) {
+func DirSize(path string) (int64, error) { return DirSizeCancel(path, nil) }
+
+// DirSizeCancel is DirSize that aborts the walk early (returning the partial
+// total) when cancel is closed. A nil cancel never aborts.
+func DirSizeCancel(path string, cancel <-chan struct{}) (int64, error) {
 	info, err := os.Lstat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -27,6 +31,9 @@ func DirSize(path string) (int64, error) {
 	}
 	var total int64
 	_ = filepath.WalkDir(path, func(_ string, d fs.DirEntry, err error) error {
+		if canceled(cancel) {
+			return fs.SkipAll
+		}
 		if err != nil {
 			return nil // skip unreadable entries
 		}
@@ -41,23 +48,43 @@ func DirSize(path string) (int64, error) {
 	return total, nil
 }
 
+// canceled reports whether cancel has been closed. A nil channel is never ready,
+// so canceled(nil) is always false.
+func canceled(cancel <-chan struct{}) bool {
+	select {
+	case <-cancel:
+		return true
+	default:
+		return false
+	}
+}
+
 // Found is a heuristic result.
 type Found = rules.Item
 
 // TopNLargest measures each immediate child dir/file of root and returns the n
 // largest, skipping any path present in covered. Sorted largest-first.
 func TopNLargest(root string, n int, covered map[string]bool) []Found {
+	return TopNLargestCancel(root, n, covered, nil)
+}
+
+// TopNLargestCancel is TopNLargest that stops measuring further children once
+// cancel is closed, returning whatever it has so far. A nil cancel never aborts.
+func TopNLargestCancel(root string, n int, covered map[string]bool, cancel <-chan struct{}) []Found {
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		return nil
 	}
 	var items []Found
 	for _, de := range entries {
+		if canceled(cancel) {
+			break
+		}
 		p := filepath.Join(root, de.Name())
 		if overlapsCovered(p, covered) {
 			continue
 		}
-		size, _ := DirSize(p)
+		size, _ := DirSizeCancel(p, cancel)
 		if size == 0 {
 			continue
 		}

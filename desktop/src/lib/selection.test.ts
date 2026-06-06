@@ -19,6 +19,14 @@ describe('selection', () => {
   it('pre-selects only SAFE items by default', () => {
     expect([...defaultSelection(items)]).toEqual(['a'])
   })
+
+  it('never auto-selects SAFE tool-commands (brew/simctl/docker)', () => {
+    const withCmd: ItemDTO[] = [
+      ...items,
+      { id: 'cmd:brew', path: '', label: 'brew cleanup', bytes: 0, category: 'Package stores', tier: 'SAFE', method: 'command', source: 'catalog', selectable: true },
+    ]
+    expect([...defaultSelection(withCmd)]).toEqual(['a'])
+  })
   it('total sums only selected', () => {
     expect(selectedTotal(items, defaultSelection(items))).toBe(100)
   })

@@ -12,50 +12,79 @@ import (
 )
 
 // Run reads newline-delimited JSON requests from in and writes JSON events to
-// out until in is exhausted. It is the GUI sidecar entry point (`dscan serve`).
+// out. It is the GUI sidecar entry point (`dscan serve`). Requests are read on
+// a separate goroutine so a `cancel` arriving mid-scan is acted on immediately;
+// scan and clean run asynchronously. Run returns once in is exhausted and all
+// in-flight work has drained.
 func Run(in io.Reader, out io.Writer, goos, home string) error {
 	s := &server{home: home, goos: goos, enc: json.NewEncoder(out), byID: map[string]rules.Item{}}
-	sc := bufio.NewScanner(in)
-	sc.Buffer(make([]byte, 1024*1024), 4*1024*1024)
-	for sc.Scan() {
-		var req Request
-		if err := json.Unmarshal(sc.Bytes(), &req); err != nil {
-			s.emit(Event{Event: "error", Message: "bad request: " + err.Error()})
-			continue
+
+	reqs := make(chan Request, 8)
+	go func() {
+		sc := bufio.NewScanner(in)
+		sc.Buffer(make([]byte, 1024*1024), 4*1024*1024)
+		for sc.Scan() {
+			var req Request
+			if err := json.Unmarshal(sc.Bytes(), &req); err != nil {
+				s.emit(Event{Event: "error", Message: "bad request: " + err.Error()})
+				continue
+			}
+			reqs <- req
 		}
+		close(reqs)
+	}()
+
+	for req := range reqs {
 		switch req.Cmd {
 		case "scan":
-			s.scan(req.System)
+			s.startScan(req.System)
 		case "clean":
-			s.clean(req.IDs, req.DryRun)
+			s.startClean(req.IDs, req.DryRun)
 		case "cancel":
 			s.cancelScan()
 		}
 	}
-	return sc.Err()
+	s.wg.Wait()
+	return nil
 }
 
 type server struct {
 	home, goos string
 	enc        *json.Encoder
-	mu         sync.Mutex // guards enc + byID
+	mu         sync.Mutex // guards enc + byID + cancel
 	byID       map[string]rules.Item
 	cancel     chan struct{}
+	wg         sync.WaitGroup // all in-flight ops (drained before Run returns)
+	scanWG     sync.WaitGroup // active scans (clean waits on these)
 }
 
 func (s *server) emit(e Event) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	_ = s.enc.Encode(e) // newline added by Encoder
+	_ = s.enc.Encode(e) // Encoder appends the newline
 }
 
-func (s *server) scan(system bool) {
+func (s *server) startScan(system bool) {
+	s.cancelScan() // supersede any in-flight scan
+	cancel := make(chan struct{})
+	s.mu.Lock()
+	s.cancel = cancel
+	s.byID = map[string]rules.Item{}
+	s.mu.Unlock()
+
+	s.wg.Add(1)
+	s.scanWG.Add(1)
+	go func() {
+		defer s.wg.Done()
+		defer s.scanWG.Done()
+		s.runScan(system, cancel)
+	}()
+}
+
+func (s *server) runScan(system bool, cancel <-chan struct{}) {
 	if d, err := engine.DiskUsage(s.home); err == nil {
 		s.emit(Event{Event: "disk", Disk: &diskInfo{Used: d.Used, Free: d.Free, Total: d.Total}})
 	}
-	s.mu.Lock()
-	s.byID = map[string]rules.Item{}
-	s.mu.Unlock()
 
 	n := 0
 	items := engine.ScanAll(s.goos, s.home, system, func(it rules.Item) {
@@ -66,43 +95,52 @@ func (s *server) scan(system bool) {
 		s.emit(Event{Event: "item", Item: &dto})
 		n++
 		s.emit(Event{Event: "progress", Scanned: n})
-	})
+	}, cancel)
+
+	// Reclaimable matches the GUI's default selection: SAFE, regenerable,
+	// path-backed items (never tool-commands).
 	var total int64
 	for _, it := range items {
-		if it.Selectable() && it.Tier == rules.Safe {
+		if it.Tier == rules.Safe && it.Path != "" && it.EffectiveMethod() == rules.Remove {
 			total += it.Bytes
 		}
 	}
 	s.emit(Event{Event: "scanDone", Reclaimable: total})
 }
 
-func (s *server) clean(ids []string, dryRun bool) {
-	s.mu.Lock()
-	var items []rules.Item
-	for _, id := range ids {
-		if it, ok := s.byID[id]; ok {
-			items = append(items, it)
-		}
-	}
-	s.mu.Unlock()
+func (s *server) startClean(ids []string, dryRun bool) {
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		s.scanWG.Wait() // ensure the scan has finished populating byID
 
-	res := clean.Run(items, clean.Options{DryRun: dryRun})
+		s.mu.Lock()
+		var items []rules.Item
+		for _, id := range ids {
+			if it, ok := s.byID[id]; ok {
+				items = append(items, it)
+			}
+		}
+		s.mu.Unlock()
 
-	var freed, trashed int64
-	var errs []string
-	for _, a := range res.Actions {
-		if a.Err != nil {
-			errs = append(errs, a.Item.Label+": "+a.Err.Error())
-			continue
+		res := clean.Run(items, clean.Options{DryRun: dryRun})
+
+		var freed, trashed int64
+		var errs []string
+		for _, a := range res.Actions {
+			if a.Err != nil {
+				errs = append(errs, a.Item.Label+": "+a.Err.Error())
+				continue
+			}
+			switch a.Method {
+			case rules.Trash:
+				trashed += a.Item.Bytes
+			case rules.Remove:
+				freed += a.Item.Bytes
+			}
 		}
-		switch a.Method {
-		case rules.Trash:
-			trashed += a.Item.Bytes
-		case rules.Remove:
-			freed += a.Item.Bytes
-		}
-	}
-	s.emit(Event{Event: "cleanResult", Freed: freed, Trashed: trashed, Errors: errs})
+		s.emit(Event{Event: "cleanResult", Freed: freed, Trashed: trashed, Errors: errs})
+	}()
 }
 
 func (s *server) cancelScan() {

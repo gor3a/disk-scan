@@ -62,6 +62,34 @@ func TestServeScanEmitsDiskItemsAndDone(t *testing.T) {
 	}
 }
 
+func TestServeCancelStillFinishesCleanly(t *testing.T) {
+	home := t.TempDir()
+	cache := filepath.Join(home, ".cache", "x")
+	if err := os.MkdirAll(cache, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cache, "b"), make([]byte, 4096), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// scan immediately followed by cancel — must not panic or hang, and the
+	// scan goroutine must still emit a terminal scanDone.
+	var out strings.Builder
+	in := strings.NewReader(`{"cmd":"scan"}` + "\n" + `{"cmd":"cancel"}` + "\n")
+	if err := Run(in, &out, "linux", home); err != nil {
+		t.Fatal(err)
+	}
+	var sawDone bool
+	for _, e := range decodeEvents(t, out.String()) {
+		if e.Event == "scanDone" {
+			sawDone = true
+		}
+	}
+	if !sawDone {
+		t.Fatal("a canceled scan must still emit scanDone so the UI can advance")
+	}
+}
+
 func TestServeCleanDryRunRemovesNothing(t *testing.T) {
 	home := t.TempDir()
 	target := filepath.Join(home, ".cache", "x")

@@ -6,6 +6,7 @@ import { HeroBar } from './components/HeroBar'
 import { Group } from './components/Group'
 import { ScanProgress } from './components/ScanProgress'
 import { ConfirmScreen } from './components/ConfirmScreen'
+import { CleaningScreen } from './components/CleaningScreen'
 import { DoneScreen } from './components/DoneScreen'
 import type { DscanEvent, Request } from './lib/protocol'
 
@@ -49,7 +50,10 @@ export default function App() {
     .filter((i) => s.selection.has(i.id) && i.method === 'trash')
     .reduce((n, i) => n + i.bytes, 0)
 
-  const doClean = () => window.dscan.send({ cmd: 'clean', ids: selectedIds(s.selection) })
+  const doClean = () => {
+    dispatch({ type: 'startClean' })
+    window.dscan.send({ cmd: 'clean', ids: selectedIds(s.selection) })
+  }
 
   return (
     <div className="flex h-screen flex-col text-ink">
@@ -86,6 +90,7 @@ export default function App() {
           onBack={() => dispatch({ type: 'back' })}
         />
       )}
+      {s.phase === 'cleaning' && <CleaningScreen />}
       {s.phase === 'done' && s.result && <DoneScreen result={s.result} onAgain={startScan} />}
     </div>
   )

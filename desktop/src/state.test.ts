@@ -31,10 +31,18 @@ describe('state reducer', () => {
     expect(s.items[0].bytes).toBe(20)
   })
 
-  it('cleanResult moves to done', () => {
-    let s = reduce(initialState(), { type: 'startScan' })
+  it('startClean shows the cleaning phase, cleanResult moves to done', () => {
+    let s = reduce(initialState(), { type: 'startClean' })
+    expect(s.phase).toBe('cleaning')
     s = reduce(s, { type: 'event', event: { event: 'cleanResult', freed: 5, trashed: 1 } })
     expect(s.phase).toBe('done')
     expect(s.result).toEqual({ freed: 5, trashed: 1, errors: [] })
+  })
+
+  it('coerces omitted (zero) numeric fields to 0 — no NaN', () => {
+    // cleanResult with only freed present (trashed omitted by Go omitempty)
+    const s = reduce(initialState(), { type: 'event', event: { event: 'cleanResult', freed: 7 } })
+    expect(s.result).toEqual({ freed: 7, trashed: 0, errors: [] })
+    expect(Number.isNaN(s.result!.freed + s.result!.trashed)).toBe(false)
   })
 })
