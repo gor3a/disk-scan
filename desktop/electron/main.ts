@@ -52,11 +52,20 @@ function createWindow() {
   // Docs utility: DSCAN_SHOT=<path> captures the rendered window to a PNG once
   // the scan has settled, then exits. Used to regenerate the README screenshot.
   if (process.env.DSCAN_SHOT) {
-    win.webContents.once('did-finish-load', () => {
-      setTimeout(async () => {
-        const img = await win!.webContents.capturePage()
-        writeFileSync(process.env.DSCAN_SHOT!, img.toPNG())
-      }, 5000)
+    win.webContents.once('did-finish-load', async () => {
+      await new Promise((r) => setTimeout(r, 3000))
+      // Optionally switch to a named tab (e.g. DSCAN_SHOT_TAB=Projects) and let
+      // its scan stream before capturing.
+      if (process.env.DSCAN_SHOT_TAB) {
+        await win!.webContents.executeJavaScript(
+          `[...document.querySelectorAll('button')].find(b=>b.textContent.trim()===${JSON.stringify(
+            process.env.DSCAN_SHOT_TAB,
+          )})?.click()`,
+        )
+        await new Promise((r) => setTimeout(r, 4000))
+      }
+      const img = await win!.webContents.capturePage()
+      writeFileSync(process.env.DSCAN_SHOT!, img.toPNG())
     })
   }
 
