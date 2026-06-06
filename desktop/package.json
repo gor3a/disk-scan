@@ -1,6 +1,15 @@
 {
   "name": "dscan-desktop",
-  "version": "0.1.0",
+  "productName": "dscan",
+  "version": "0.2.0",
+  "description": "Interactive disk scanner & cleaner for macOS and Linux",
+  "author": "gor3a",
+  "license": "MIT",
+  "homepage": "https://github.com/gor3a/disk-scan",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gor3a/disk-scan.git"
+  },
   "private": true,
   "main": "dist-electron/main.js",
   "scripts": {

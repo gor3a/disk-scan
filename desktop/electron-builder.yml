@@ -1,5 +1,6 @@
 appId: com.gor3a.dscan
 productName: dscan
+copyright: © 2026 gor3a
 directories:
   output: release
 files:
@@ -12,11 +13,22 @@ mac:
   target: dmg
   icon: build/icon.icns
   category: public.app-category.utilities
-  # unsigned for MVP — no identity / notarization
+  # unsigned for MVP — disable auto-signing / notarization
+  identity: null
 linux:
   target: [AppImage, deb]
   icon: build/icon.png
   category: Utility
+  synopsis: Interactive disk scanner & cleaner
+  description: >-
+    Scan known cache/build locations plus your largest files, grouped by
+    category and safety tier. Regenerable caches are hard-deleted, real user
+    data is moved to the Trash, and protected data is never selectable.
+  maintainer: gor3a <mina.sameh.lameh@gmail.com>
+  desktop:
+    Name: dscan
+    Comment: Interactive disk scanner & cleaner
+    Categories: Utility;System;FileTools
 publish:
   provider: github
   owner: gor3a
