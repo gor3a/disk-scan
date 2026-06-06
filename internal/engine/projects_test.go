@@ -39,6 +39,36 @@ func TestFindProjectsSkipsNestedAndReportsLastUsed(t *testing.T) {
 	}
 }
 
+func TestFindProjectsArtifactKinds(t *testing.T) {
+	root := t.TempDir()
+	mkfileP(t, filepath.Join(root, "node-app", "node_modules", "f"), 1024)
+	mkfileP(t, filepath.Join(root, "next-app", ".next", "f"), 1024)
+	mkfileP(t, filepath.Join(root, "py", "__pycache__", "f"), 1024)
+	mkfileP(t, filepath.Join(root, "rust", "Cargo.toml"), 10)
+	mkfileP(t, filepath.Join(root, "rust", "target", "f"), 1024)
+	mkfileP(t, filepath.Join(root, "plain", "target", "f"), 1024)
+	mkfileP(t, filepath.Join(root, "c-proj", "build", "f"), 1024)
+
+	kinds := map[string]string{}
+	FindProjects(root, func(p Project) { kinds[filepath.Base(p.Dir)] = p.Kind }, nil)
+
+	if kinds["node-app"] != "node_modules" {
+		t.Errorf("node-app kind = %q", kinds["node-app"])
+	}
+	if kinds["next-app"] != ".next" || kinds["py"] != "__pycache__" {
+		t.Errorf("kinds = %+v", kinds)
+	}
+	if kinds["rust"] != "target" {
+		t.Errorf("rust target (with Cargo.toml) should match, got %q", kinds["rust"])
+	}
+	if _, ok := kinds["plain"]; ok {
+		t.Error("bare target without Cargo.toml must be skipped")
+	}
+	if _, ok := kinds["c-proj"]; ok {
+		t.Error("build without package.json must be skipped")
+	}
+}
+
 func TestFindProjectsModifiedIgnoresNodeModules(t *testing.T) {
 	root := t.TempDir()
 	proj := filepath.Join(root, "p")

@@ -9,12 +9,13 @@ import (
 	"github.com/gor3a/disk-scan/internal/scan"
 )
 
-// Project is one node_modules directory found under a root.
+// Project is one regenerable artifact directory found under a root.
 type Project struct {
-	Path     string // absolute path to the node_modules dir (removed when cleaned)
+	Path     string // absolute path to the artifact dir (removed when cleaned)
 	Dir      string // absolute path to the parent project dir (for the label)
+	Kind     string // node_modules | .next | dist | build | target | __pycache__ | ...
 	Bytes    int64
-	Modified int64 // unix secs: newest mtime among the project dir's non-node_modules children
+	Modified int64 // unix secs: newest mtime among the project dir's non-artifact children
 }
 
 // FindProjects walks root depth-first for directories named "node_modules"
@@ -41,19 +42,53 @@ func FindProjects(root string, onItem func(Project), cancel <-chan struct{}) {
 		if fi, e := d.Info(); e == nil && deviceID(fi) != rootDev {
 			return fs.SkipDir // different filesystem
 		}
-		if d.Name() == "node_modules" {
+		if kind, ok := artifactKind(d.Name(), filepath.Dir(path)); ok {
 			parent := filepath.Dir(path)
 			size, _ := scan.DirSizeCancel(path, cancel)
 			onItem(Project{
 				Path:     path,
 				Dir:      parent,
+				Kind:     kind,
 				Bytes:    size,
 				Modified: latestChildMtime(parent),
 			})
-			return fs.SkipDir // don't descend into node_modules
+			return fs.SkipDir // don't descend into the artifact
 		}
 		return nil
 	})
+}
+
+// artifactKind reports whether dirName under parent is a regenerable build/dep
+// artifact, and its kind. Ambiguous names require a sibling manifest so we never
+// nuke real source.
+func artifactKind(dirName, parent string) (string, bool) {
+	switch dirName {
+	case "node_modules", ".next", ".nuxt", ".svelte-kit", ".turbo", "__pycache__", ".gradle":
+		return dirName, true
+	case "target":
+		if exists(filepath.Join(parent, "Cargo.toml")) {
+			return dirName, true
+		}
+	case "dist", "build", "out":
+		if exists(filepath.Join(parent, "package.json")) {
+			return dirName, true
+		}
+	}
+	return "", false
+}
+
+func exists(p string) bool {
+	_, err := os.Stat(p)
+	return err == nil
+}
+
+func isArtifactName(name string) bool {
+	switch name {
+	case "node_modules", ".next", ".nuxt", ".svelte-kit", ".turbo", "__pycache__",
+		".gradle", "target", "dist", "build", "out":
+		return true
+	}
+	return false
 }
 
 func deviceID(fi os.FileInfo) uint64 {
@@ -73,7 +108,7 @@ func latestChildMtime(dir string) int64 {
 	}
 	var newest int64
 	for _, e := range entries {
-		if e.Name() == "node_modules" {
+		if isArtifactName(e.Name()) {
 			continue
 		}
 		if info, err := e.Info(); err == nil {
