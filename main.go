@@ -11,6 +11,7 @@ import (
 
 	"github.com/gor3a/disk-scan/internal/clean"
 	"github.com/gor3a/disk-scan/internal/engine"
+	"github.com/gor3a/disk-scan/internal/serve"
 )
 
 var (
@@ -21,7 +22,22 @@ var (
 	version     = "0.1.0"
 )
 
+// isServeMode reports whether dscan was invoked as `dscan serve` (the headless
+// JSON sidecar mode used by the desktop GUI).
+func isServeMode(args []string) bool {
+	return len(args) > 1 && args[1] == "serve"
+}
+
 func main() {
+	if isServeMode(os.Args) {
+		home, _ := os.UserHomeDir()
+		if err := serve.Run(os.Stdin, os.Stdout, runtime.GOOS, home); err != nil {
+			fmt.Fprintln(os.Stderr, "serve error:", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	flag.Parse()
 	if *flagVersion {
 		fmt.Println("dscan", version)
