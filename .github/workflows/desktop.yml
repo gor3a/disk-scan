@@ -30,10 +30,14 @@ jobs:
 
       - name: Install desktop deps
         working-directory: desktop
-        # npm install (not ci): the committed lockfile is generated on one
-        # platform, and npm ci strictly rejects the per-OS optional binaries
-        # (electron-builder/rollup/esbuild) it lacks for the other runners.
-        run: npm install --no-audit --no-fund
+        # Resolve deps fresh per runner. The committed lockfile is generated on
+        # one platform; reusing it triggers npm's optional-deps bug
+        # (npm/cli#4828) where the other OS's native binary
+        # (@rollup/rollup-linux-x64-gnu, etc.) is silently skipped. Removing it
+        # first is the documented workaround.
+        run: |
+          rm -f package-lock.json
+          npm install --no-audit --no-fund
 
       - name: Test
         run: |
