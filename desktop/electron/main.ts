@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'node:path'
-import { existsSync } from 'node:fs'
+import { existsSync, writeFileSync } from 'node:fs'
 import { Sidecar } from './sidecar'
 import { createSplash } from './splash'
 import type { Request } from '../src/lib/protocol'
@@ -48,6 +48,17 @@ function createWindow() {
       splash = null
     }, wait)
   })
+
+  // Docs utility: DSCAN_SHOT=<path> captures the rendered window to a PNG once
+  // the scan has settled, then exits. Used to regenerate the README screenshot.
+  if (process.env.DSCAN_SHOT) {
+    win.webContents.once('did-finish-load', () => {
+      setTimeout(async () => {
+        const img = await win!.webContents.capturePage()
+        writeFileSync(process.env.DSCAN_SHOT!, img.toPNG())
+      }, 5000)
+    })
+  }
 
   if (process.env.VITE_DEV_SERVER_URL) win.loadURL(process.env.VITE_DEV_SERVER_URL)
   else win.loadFile(join(__dirname, '..', 'dist', 'index.html'))

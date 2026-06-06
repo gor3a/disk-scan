@@ -3,8 +3,10 @@
 [![CI](https://github.com/gor3a/disk-scan/actions/workflows/ci.yml/badge.svg)](https://github.com/gor3a/disk-scan/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gor3a/disk-scan)](https://goreportcard.com/report/github.com/gor3a/disk-scan)
+[![Latest release](https://img.shields.io/github/v/release/gor3a/disk-scan)](https://github.com/gor3a/disk-scan/releases/latest)
 
-Interactive terminal disk scanner & cleaner for macOS and Linux.
+Interactive disk scanner & cleaner for macOS and Linux — a friendly desktop app
+and a terminal TUI, sharing one engine.
 
 `dscan` scans known cache/build/package locations plus the largest items in your
 home dir, groups them by category and safety tier, and lets you check off what to
@@ -12,7 +14,23 @@ clean. Regenerable caches are hard-deleted; real user data is moved to the OS
 Trash; protected data (browser profiles, messaging apps, SSH keys) is never
 selectable.
 
-## Usage
+![The dscan desktop app](assets/dscan-desktop.png)
+
+## Desktop app
+
+Download the latest `.dmg` (macOS), `.AppImage` or `.deb` (Linux) from the
+**[Releases page](https://github.com/gor3a/disk-scan/releases/latest)**.
+
+The builds are currently **unsigned**:
+
+- **macOS** (Apple Silicon): right-click the app → **Open** the first time, or
+  run `xattr -dr com.apple.quarantine /Applications/dscan.app`.
+- **Linux**: `chmod +x dscan-*.AppImage` and run it, or install the `.deb`.
+
+It auto-scans on launch, pre-selects the regenerable `SAFE` caches, and reclaims
+space in one click — `REVIEW` items are opt-in, `KEEP` items are locked.
+
+## Command line
 
 ```
 dscan              # scan + interactive checklist
@@ -28,7 +46,7 @@ Keys (interactive): `↑/↓` move · `space` toggle · `enter` review · `enter
 `--yes` is for scripts/CI: it cleans only regenerable `SAFE` items and never
 touches `REVIEW`/`KEEP` data or runs tool-commands.
 
-## Install
+## Install the CLI
 
 With a Go toolchain installed:
 
