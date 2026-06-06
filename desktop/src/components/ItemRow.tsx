@@ -1,5 +1,6 @@
 import type { ItemDTO } from '../lib/protocol'
 import { humanBytes } from '../lib/format'
+import { Check } from './Check'
 
 export function ItemRow({
   item,
@@ -10,16 +11,24 @@ export function ItemRow({
   checked: boolean
   onToggle: (id: string) => void
 }) {
+  const locked = !item.selectable
   return (
-    <label className="flex items-center gap-3 py-2 text-sm text-slate-700 border-b border-slate-50">
-      <input
-        type="checkbox"
-        disabled={!item.selectable}
-        checked={checked}
-        onChange={() => onToggle(item.id)}
+    <div
+      onClick={() => !locked && onToggle(item.id)}
+      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${
+        locked ? 'cursor-default' : 'cursor-pointer hover:bg-paper'
+      }`}
+    >
+      <Check
+        state={locked ? 'locked' : checked ? 'on' : 'off'}
+        onClick={locked ? undefined : () => onToggle(item.id)}
       />
-      <span>{item.label}</span>
-      <span className="ml-auto font-semibold text-slate-900">{humanBytes(item.bytes)}</span>
-    </label>
+      <span className={`truncate text-[13.5px] ${locked ? 'text-ink-soft' : 'text-ink'}`}>
+        {item.label}
+      </span>
+      <span className="ml-auto shrink-0 font-mono text-[12.5px] tnum text-ink-soft">
+        {humanBytes(item.bytes)}
+      </span>
+    </div>
   )
 }

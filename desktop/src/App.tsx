@@ -1,6 +1,7 @@
-import { useEffect, useReducer } from 'react'
+import { useEffect, useReducer, useRef } from 'react'
 import { reduce, initialState } from './state'
-import { toggle, selectedIds, selectedTotal } from './lib/selection'
+import { toggle, toggleGroup, selectedIds, selectedTotal } from './lib/selection'
+import type { Tier } from './lib/protocol'
 import { HeroBar } from './components/HeroBar'
 import { Group } from './components/Group'
 import { ScanProgress } from './components/ScanProgress'
@@ -27,13 +28,19 @@ export default function App() {
     window.dscan.send({ cmd: 'scan' })
   }
 
+  const didStart = useRef(false)
   useEffect(() => {
+    if (didStart.current) return // StrictMode invokes mount effects twice
+    didStart.current = true
     startScan()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const onToggle = (id: string) =>
     dispatch({ type: 'setSelection', selection: toggle(s.selection, id, s.items) })
+
+  const onToggleGroup = (tier: Tier) =>
+    dispatch({ type: 'setSelection', selection: toggleGroup(s.selection, s.items, tier) })
 
   const deleteBytes = s.items
     .filter((i) => s.selection.has(i.id) && i.method === 'remove')
@@ -45,7 +52,7 @@ export default function App() {
   const doClean = () => window.dscan.send({ cmd: 'clean', ids: selectedIds(s.selection) })
 
   return (
-    <div className="min-h-screen bg-white text-slate-800">
+    <div className="flex h-screen flex-col text-ink">
       {s.phase === 'scanning' && (
         <ScanProgress scanned={s.scanned} onCancel={() => window.dscan.send({ cmd: 'cancel' })} />
       )}
@@ -56,9 +63,18 @@ export default function App() {
             disk={s.disk}
             onClean={() => dispatch({ type: 'toGate' })}
           />
-          {(['SAFE', 'REVIEW', 'KEEP'] as const).map((t) => (
-            <Group key={t} tier={t} items={s.items} selection={s.selection} onToggle={onToggle} />
-          ))}
+          <div className="flex-1 overflow-y-auto pb-6">
+            {(['SAFE', 'REVIEW', 'KEEP'] as const).map((t) => (
+              <Group
+                key={t}
+                tier={t}
+                items={s.items}
+                selection={s.selection}
+                onToggle={onToggle}
+                onToggleGroup={onToggleGroup}
+              />
+            ))}
+          </div>
         </>
       )}
       {s.phase === 'confirm' && (

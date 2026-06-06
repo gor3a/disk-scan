@@ -1,3 +1,76 @@
+@import '@fontsource-variable/fraunces';
+@import '@fontsource-variable/hanken-grotesk';
+@import '@fontsource-variable/jetbrains-mono';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  /* warm paper & ink palette */
+  --paper: #f4efe6;
+  --paper-2: #fbf8f1;
+  --ink: #221d18;
+  --ink-soft: #6d6357;
+  --line: #e4dccd;
+
+  --safe: #1f7a5c;
+  --safe-bg: #e4f1e9;
+  --review: #b06d10;
+  --review-bg: #f7ebd6;
+  --keep: #8a8076;
+  --keep-bg: #eee8dd;
+
+  --accent: #1f7a5c;
+  --accent-deep: #0f3d2e;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    color: var(--ink);
+    font-family: 'Hanken Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: 'ss01';
+    -webkit-font-smoothing: antialiased;
+    background-color: var(--paper);
+    /* soft warmth at the top + faint grain for atmosphere */
+    background-image:
+      radial-gradient(120% 80% at 50% -20%, rgba(31, 122, 92, 0.1), transparent 60%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  }
+
+  ::-webkit-scrollbar {
+    width: 11px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #d8cfbe;
+    border: 3px solid var(--paper);
+    border-radius: 99px;
+  }
+}
+
+/* numeric display: tabular figures for tidy byte columns */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.rise {
+  animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}

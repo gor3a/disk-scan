@@ -1,6 +1,7 @@
-import type { ItemDTO } from './protocol'
+import type { ItemDTO, Tier } from './protocol'
 
 export type Selection = Set<string>
+export type GroupState = 'all' | 'some' | 'none'
 
 export function defaultSelection(items: ItemDTO[]): Selection {
   return new Set(items.filter((i) => i.selectable && i.tier === 'SAFE').map((i) => i.id))
@@ -24,4 +25,32 @@ export function selectedTotal(items: ItemDTO[], sel: Selection): number {
 
 export function selectedIds(sel: Selection): string[] {
   return [...sel].sort()
+}
+
+// selectableInTier returns the items in a tier the user is allowed to select.
+export function selectableInTier(items: ItemDTO[], tier: Tier): ItemDTO[] {
+  return items.filter((i) => i.tier === tier && i.selectable)
+}
+
+// groupState reports whether all / some / none of a tier's selectable items are
+// selected — drives the parent checkbox (checked / indeterminate / unchecked).
+export function groupState(items: ItemDTO[], sel: Selection, tier: Tier): GroupState {
+  const g = selectableInTier(items, tier)
+  if (g.length === 0) return 'none'
+  const n = g.filter((i) => sel.has(i.id)).length
+  if (n === 0) return 'none'
+  return n === g.length ? 'all' : 'some'
+}
+
+// toggleGroup selects every selectable item in a tier, or clears them all if
+// they are already fully selected.
+export function toggleGroup(sel: Selection, items: ItemDTO[], tier: Tier): Selection {
+  const g = selectableInTier(items, tier)
+  const allSelected = g.length > 0 && g.every((i) => sel.has(i.id))
+  const next = new Set(sel)
+  for (const i of g) {
+    if (allSelected) next.delete(i.id)
+    else next.add(i.id)
+  }
+  return next
 }

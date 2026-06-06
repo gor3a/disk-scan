@@ -49,8 +49,15 @@ function applyEvent(s: State, e: DscanEvent): State {
   switch (e.event) {
     case 'disk':
       return { ...s, disk: e.disk }
-    case 'item':
-      return { ...s, items: [...s.items, e.item] }
+    case 'item': {
+      // Upsert by id so a re-scan (or React StrictMode's double-invoked effect)
+      // can never duplicate rows.
+      const idx = s.items.findIndex((i) => i.id === e.item.id)
+      if (idx === -1) return { ...s, items: [...s.items, e.item] }
+      const items = s.items.slice()
+      items[idx] = e.item
+      return { ...s, items }
+    }
     case 'progress':
       return { ...s, scanned: e.scanned }
     case 'scanDone':

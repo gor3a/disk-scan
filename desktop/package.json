@@ -29,6 +29,9 @@
     "vitest": "^2.0.0"
   },
   "dependencies": {
+    "@fontsource-variable/fraunces": "^5.2.9",
+    "@fontsource-variable/hanken-grotesk": "^5.2.8",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "electron-updater": "^6.0.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"

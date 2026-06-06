@@ -6,7 +6,8 @@
     "strict": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "outDir": "dist-electron"
+    "noEmit": true
   },
-  "include": ["electron"]
+  "include": ["electron"],
+  "exclude": ["electron/**/*.test.ts"]
 }

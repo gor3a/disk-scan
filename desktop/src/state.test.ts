@@ -22,6 +22,15 @@ describe('state reducer', () => {
     expect(s.disk?.total).toBe(3)
   })
 
+  it('upserts items by id — duplicate item events never double rows', () => {
+    let s = reduce(initialState(), { type: 'startScan' })
+    const item = { id: 'a', path: '/a', label: 'a', bytes: 10, category: 'Caches', tier: 'SAFE' as const, method: 'remove' as const, source: 'catalog' as const, selectable: true }
+    s = reduce(s, { type: 'event', event: { event: 'item', item } })
+    s = reduce(s, { type: 'event', event: { event: 'item', item: { ...item, bytes: 20 } } })
+    expect(s.items).toHaveLength(1)
+    expect(s.items[0].bytes).toBe(20)
+  })
+
   it('cleanResult moves to done', () => {
     let s = reduce(initialState(), { type: 'startScan' })
     s = reduce(s, { type: 'event', event: { event: 'cleanResult', freed: 5, trashed: 1 } })

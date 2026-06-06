@@ -6,14 +6,20 @@ export function ScanProgress({
   onCancel: () => void
 }) {
   return (
-    <div className="p-8 text-center">
-      <p className="text-slate-600">Scanning… {scanned} items found</p>
-      <div className="h-2 bg-indigo-100 rounded mt-4 overflow-hidden">
-        <div className="h-full bg-indigo-600 animate-pulse w-2/3" />
+    <div className="grid min-h-screen place-items-center px-10 text-center">
+      <div className="rise">
+        <div className="mx-auto mb-7 h-12 w-12 animate-spin rounded-full border-[3px] border-line border-t-accent" />
+        <p className="font-display text-[26px] leading-tight text-ink">Scanning your disk…</p>
+        <p className="mt-2 text-sm text-ink-soft">
+          <span className="tnum">{scanned}</span> items found so far
+        </p>
+        <button
+          onClick={onCancel}
+          className="mt-7 text-[13px] text-ink-soft underline underline-offset-4 transition-colors hover:text-ink"
+        >
+          Cancel
+        </button>
       </div>
-      <button onClick={onCancel} className="mt-4 text-sm text-slate-500 underline">
-        Cancel
-      </button>
     </div>
   )
 }

@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { defaultSelection, toggle, selectedTotal, selectedIds } from './selection'
+import {
+  defaultSelection,
+  toggle,
+  selectedTotal,
+  selectedIds,
+  groupState,
+  toggleGroup,
+} from './selection'
 import type { ItemDTO } from './protocol'
 
 const items: ItemDTO[] = [
@@ -28,5 +35,36 @@ describe('selection', () => {
   })
   it('selectedIds returns a stable sorted array', () => {
     expect(selectedIds(defaultSelection(items))).toEqual(['a'])
+  })
+
+  it('groupState reflects all / some / none for a tier', () => {
+    const empty = new Set<string>()
+    expect(groupState(items, empty, 'SAFE')).toBe('none')
+    expect(groupState(items, new Set(['a']), 'SAFE')).toBe('all')
+    expect(groupState(items, empty, 'REVIEW')).toBe('none')
+    // KEEP has no selectable items
+    expect(groupState(items, empty, 'KEEP')).toBe('none')
+  })
+
+  it('groupState is "some" when partially selected', () => {
+    const more: ItemDTO[] = [
+      ...items,
+      { id: 'a2', path: '/a2', label: 'a2', bytes: 1, category: 'Caches', tier: 'SAFE', method: 'remove', source: 'catalog', selectable: true },
+    ]
+    expect(groupState(more, new Set(['a']), 'SAFE')).toBe('some')
+  })
+
+  it('toggleGroup selects all selectable in a tier, then clears them', () => {
+    let sel = new Set<string>()
+    sel = toggleGroup(sel, items, 'SAFE')
+    expect(sel.has('a')).toBe(true)
+    sel = toggleGroup(sel, items, 'SAFE')
+    expect(sel.has('a')).toBe(false)
+  })
+
+  it('toggleGroup never selects KEEP items', () => {
+    const sel = toggleGroup(new Set<string>(), items, 'KEEP')
+    expect(sel.has('c')).toBe(false)
+    expect(sel.size).toBe(0)
   })
 })
