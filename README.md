@@ -4,6 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gor3a/disk-scan)](https://goreportcard.com/report/github.com/gor3a/disk-scan)
 [![Latest release](https://img.shields.io/github/v/release/gor3a/disk-scan)](https://github.com/gor3a/disk-scan/releases/latest)
+[![Support on Ko-fi](https://img.shields.io/badge/Support-Ko--fi-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/gor3a)
 
 Interactive disk scanner & cleaner for macOS and Linux — a friendly desktop app
 and a terminal TUI, sharing one engine.
@@ -81,6 +82,12 @@ TDD workflow, the safety rules around deletion, and how to add a catalog entry.
 
 Please also read our **[Code of Conduct](CODE_OF_CONDUCT.md)**. To report a
 security issue, see **[SECURITY.md](SECURITY.md)** (do not open a public issue).
+
+## Support
+
+dscan is free and open source. If it reclaimed some space for you and you'd like
+to say thanks, you can **[buy me a coffee on Ko-fi](https://ko-fi.com/gor3a)** ☕.
+It's always appreciated and never required.
 
 ## License
 
