@@ -5,6 +5,16 @@
 *.out
 # OS
 .DS_Store
+# Brainstorming scratch (local-only)
+/.superpowers/
+# Desktop (Electron) build output & deps
+/desktop/node_modules/
+/desktop/dist/
+/desktop/dist-electron/
+/desktop/release/
+/desktop/resources/
+/desktop/dscan-dev
 # Local-only design docs (not published to remote)
 /docs/spec.md
 /docs/plan.md
+/docs/superpowers/
