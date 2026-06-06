@@ -3,8 +3,30 @@ package serve
 import (
 	"testing"
 
+	"github.com/gor3a/disk-scan/internal/engine"
 	"github.com/gor3a/disk-scan/internal/rules"
 )
+
+func engineProject(path, dir string, bytes, modified int64) engine.Project {
+	return engine.Project{Path: path, Dir: dir, Bytes: bytes, Modified: modified}
+}
+
+func TestProjectDTO(t *testing.T) {
+	p := engineProject("/Users/me/dev/work-app/node_modules", "/Users/me/dev/work-app", 880, 1700000000)
+	dto := projectDTO(p)
+	if dto.ID != "/Users/me/dev/work-app/node_modules" {
+		t.Errorf("ID = %s", dto.ID)
+	}
+	if dto.Label != "work-app" {
+		t.Errorf("Label = %s, want work-app", dto.Label)
+	}
+	if dto.Category != "Projects" || dto.Tier != "SAFE" || dto.Method != "remove" {
+		t.Errorf("bad classification: %+v", dto)
+	}
+	if dto.Modified != 1700000000 || !dto.Selectable {
+		t.Errorf("Modified/Selectable wrong: %+v", dto)
+	}
+}
 
 func TestToDTO(t *testing.T) {
 	cases := []struct {

@@ -2,7 +2,12 @@
 // the Electron GUI. One JSON object per line in each direction.
 package serve
 
-import "github.com/gor3a/disk-scan/internal/rules"
+import (
+	"path/filepath"
+
+	"github.com/gor3a/disk-scan/internal/engine"
+	"github.com/gor3a/disk-scan/internal/rules"
+)
 
 // ItemDTO is the wire form of a rules.Item (string enums, stable id).
 type ItemDTO struct {
@@ -15,12 +20,15 @@ type ItemDTO struct {
 	Method     string   `json:"method"` // remove|trash|command
 	Source     string   `json:"source"` // catalog|heuristic
 	Selectable bool     `json:"selectable"`
+	Modified   int64    `json:"modified,omitempty"`
 	Command    []string `json:"command,omitempty"`
 }
 
 // Request is a command from the GUI (main → sidecar stdin).
 type Request struct {
 	Cmd    string   `json:"cmd"`    // scan|clean|cancel
+	Kind   string   `json:"kind"`   // scan: "caches" (default) | "projects"
+	Root   string   `json:"root"`   // scan projects: folder to search
 	System bool     `json:"system"` // scan: include system dirs
 	IDs    []string `json:"ids"`    // clean: which items
 	DryRun bool     `json:"dryRun"` // clean: preview only
@@ -34,6 +42,8 @@ type Event struct {
 	Item        *ItemDTO  `json:"item,omitempty"`
 	Scanned     int       `json:"scanned,omitempty"`
 	Phase       string    `json:"phase,omitempty"`
+	Bytes       int64     `json:"bytes,omitempty"`
+	Path        string    `json:"path,omitempty"`
 	Reclaimable int64     `json:"reclaimable,omitempty"`
 	Freed       int64     `json:"freed,omitempty"`
 	Trashed     int64     `json:"trashed,omitempty"`
@@ -70,6 +80,23 @@ func sourceString(s rules.Source) string {
 		return "heuristic"
 	}
 	return "catalog"
+}
+
+// projectDTO maps an engine.Project to the wire form. node_modules is its own
+// "Projects" category and is regenerable, so SAFE/remove.
+func projectDTO(p engine.Project) ItemDTO {
+	return ItemDTO{
+		ID:         p.Path,
+		Path:       p.Path,
+		Label:      filepath.Base(p.Dir),
+		Bytes:      p.Bytes,
+		Category:   "Projects",
+		Tier:       "SAFE",
+		Method:     "remove",
+		Source:     "heuristic",
+		Selectable: true,
+		Modified:   p.Modified,
+	}
 }
 
 // ToDTO converts an engine item to its wire form.
