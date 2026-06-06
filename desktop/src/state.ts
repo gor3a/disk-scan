@@ -1,7 +1,7 @@
 import type { DscanEvent, Disk, ItemDTO } from './lib/protocol'
-import { defaultSelection, type Selection } from './lib/selection'
+import type { Selection } from './lib/selection'
 
-export type Phase = 'idle' | 'scanning' | 'list' | 'confirm' | 'cleaning' | 'done'
+export type Tab = 'cleanup' | 'projects'
 
 export interface CleanResult {
   freed: number
@@ -9,76 +9,111 @@ export interface CleanResult {
   errors: string[]
 }
 
-export interface State {
-  phase: Phase
+export interface TabState {
+  scanning: boolean
+  phase?: string
+  scanned: number
+  bytes: number
+  currentPath?: string
   disk?: Disk
   items: ItemDTO[]
-  scanned: number
   selection: Selection
   reclaimable: number
+}
+
+export interface State {
+  tab: Tab
+  scanningTab: Tab | null
+  cleanup: TabState
+  projects: TabState
+  pendingCleanIds: string[]
   result?: CleanResult
 }
 
 export type Action =
-  | { type: 'startScan' }
-  | { type: 'startClean' }
+  | { type: 'setTab'; tab: Tab }
+  | { type: 'startScan'; tab: Tab }
+  | { type: 'startClean'; ids: string[] }
   | { type: 'event'; event: DscanEvent }
-  | { type: 'toGate' }
-  | { type: 'back' }
   | { type: 'setSelection'; selection: Selection }
 
+function emptyTab(): TabState {
+  return { scanning: false, scanned: 0, bytes: 0, items: [], selection: new Set(), reclaimable: 0 }
+}
+
 export function initialState(): State {
-  return { phase: 'idle', items: [], scanned: 0, selection: new Set(), reclaimable: 0 }
+  return {
+    tab: 'cleanup',
+    scanningTab: null,
+    cleanup: emptyTab(),
+    projects: emptyTab(),
+    pendingCleanIds: [],
+  }
+}
+
+export function activeTab(s: State): TabState {
+  return s[s.tab]
+}
+
+function setTabState(s: State, tab: Tab, t: TabState): State {
+  return { ...s, [tab]: t }
 }
 
 export function reduce(s: State, a: Action): State {
   switch (a.type) {
+    case 'setTab':
+      return { ...s, tab: a.tab }
     case 'startScan':
-      return { ...initialState(), phase: 'scanning' }
+      return {
+        ...setTabState(s, a.tab, { ...emptyTab(), scanning: true }),
+        tab: a.tab,
+        scanningTab: a.tab,
+      }
     case 'startClean':
-      return { ...s, phase: 'cleaning' }
-    case 'toGate':
-      return { ...s, phase: 'confirm' }
-    case 'back':
-      return { ...s, phase: 'list' }
+      return { ...s, pendingCleanIds: a.ids }
     case 'setSelection':
-      return { ...s, selection: a.selection }
+      return setTabState(s, s.tab, { ...activeTab(s), selection: a.selection })
     case 'event':
       return applyEvent(s, a.event)
   }
 }
 
 function applyEvent(s: State, e: DscanEvent): State {
+  // cleanResult applies to whichever tab initiated the clean (the current tab).
+  if (e.event === 'cleanResult') {
+    const cleaned = new Set(s.pendingCleanIds)
+    const t = activeTab(s)
+    const items = t.items.filter((i) => !cleaned.has(i.id))
+    const selection = new Set([...t.selection].filter((id) => !cleaned.has(id)))
+    return {
+      ...setTabState(s, s.tab, { ...t, items, selection }),
+      pendingCleanIds: [],
+      result: { freed: e.freed ?? 0, trashed: e.trashed ?? 0, errors: e.errors ?? [] },
+    }
+  }
+
+  const tab = s.scanningTab ?? s.tab
+  const t = s[tab]
+  let nt: TabState
   switch (e.event) {
     case 'disk':
-      return { ...s, disk: e.disk }
+      nt = { ...t, disk: e.disk }
+      break
     case 'item': {
-      // Upsert by id so a re-scan (or React StrictMode's double-invoked effect)
-      // can never duplicate rows.
-      const idx = s.items.findIndex((i) => i.id === e.item.id)
-      if (idx === -1) return { ...s, items: [...s.items, e.item] }
-      const items = s.items.slice()
-      items[idx] = e.item
-      return { ...s, items }
+      const idx = t.items.findIndex((i) => i.id === e.item.id)
+      const items =
+        idx === -1 ? [...t.items, e.item] : t.items.map((i, k) => (k === idx ? e.item : i))
+      nt = { ...t, items }
+      break
     }
     case 'progress':
-      // Go omits zero-valued numerics (omitempty), so coerce undefined → 0 to
-      // avoid NaN downstream.
-      return { ...s, scanned: e.scanned ?? 0 }
+      nt = { ...t, scanned: e.scanned ?? 0, phase: e.phase, bytes: e.bytes ?? 0, currentPath: e.path }
+      break
     case 'scanDone':
-      return {
-        ...s,
-        phase: 'list',
-        reclaimable: e.reclaimable ?? 0,
-        selection: defaultSelection(s.items),
-      }
-    case 'cleanResult':
-      return {
-        ...s,
-        phase: 'done',
-        result: { freed: e.freed ?? 0, trashed: e.trashed ?? 0, errors: e.errors ?? [] },
-      }
-    case 'error':
+      nt = { ...t, scanning: false, reclaimable: e.reclaimable ?? 0 }
+      break
+    default:
       return s
   }
+  return setTabState(s, tab, nt)
 }
