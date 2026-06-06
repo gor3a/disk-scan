@@ -8,6 +8,7 @@ import { Group } from './components/Group'
 import { Tabs } from './components/Tabs'
 import { ScanLine } from './components/ScanLine'
 import { ProjectsView } from './components/ProjectsView'
+import { SupportButton } from './components/SupportButton'
 import type { DscanEvent, Request, Tier } from './lib/protocol'
 
 declare global {
@@ -119,21 +120,23 @@ export default function App() {
       )}
 
       {s.result && (
-        <div className="border-t border-line bg-surface px-5 py-2 text-[12.5px] text-safe">
-          Reclaimed {humanBytes(s.result.freed + s.result.trashed)}
-          {s.result.errors.length > 0 && ` · ${s.result.errors.length} skipped`}
+        <div className="flex items-center gap-3 border-t border-line bg-surface px-5 py-2 text-[12.5px] text-safe">
+          <span>
+            Reclaimed {humanBytes(s.result.freed + s.result.trashed)}
+            {s.result.errors.length > 0 && ` · ${s.result.errors.length} skipped`}
+          </span>
+          <span className="text-ink-soft">— enjoying dscan?</span>
+          <span className="ml-auto">
+            <SupportButton onClick={() => window.dscan.openExternal('https://ko-fi.com/gor3a')} />
+          </span>
         </div>
       )}
 
       <footer className="flex items-center border-t border-line bg-surface px-5 py-1.5 text-[11.5px] text-ink-soft">
-        <span>dscan</span>
-        <button
-          onClick={() => window.dscan.openExternal('https://ko-fi.com/gor3a')}
-          className="ml-auto rounded-md px-2 py-0.5 transition-colors hover:bg-paper hover:text-ink"
-          title="Support dscan on Ko-fi"
-        >
-          Support ☕
-        </button>
+        <span className="font-display text-[13px] text-ink">dscan</span>
+        <span className="ml-auto">
+          <SupportButton onClick={() => window.dscan.openExternal('https://ko-fi.com/gor3a')} />
+        </span>
       </footer>
     </div>
   )

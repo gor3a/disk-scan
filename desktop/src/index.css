@@ -74,3 +74,24 @@
 .rise {
   animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
+
+/* Coffee steam — only animates while hovering the Support pill. */
+@keyframes steam {
+  0% {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  45% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+.group:hover .steam {
+  animation: steam 1.3s ease-in-out infinite;
+}
+.group:hover .steam-2 {
+  animation-delay: 0.4s;
+}
