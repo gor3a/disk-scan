@@ -5,3 +5,6 @@
 *.out
 # OS
 .DS_Store
+# Local-only design docs (not published to remote)
+/docs/spec.md
+/docs/plan.md
