@@ -47,6 +47,36 @@ export function SettingsModal({
       <p className="mt-1 text-[12px] text-ink-soft">
         Projects in the Projects tab untouched for longer than this are pre-checked.
       </p>
+
+      <div className="mt-6 text-[13px] font-semibold text-ink">Excluded folders</div>
+      <p className="mt-1 text-[12px] text-ink-soft">dscan never scans or cleans these.</p>
+      <div className="mt-2 space-y-1">
+        {(settings.excludes ?? []).map((p) => (
+          <div key={p} className="flex items-center gap-2 rounded-lg bg-paper px-2.5 py-1.5 text-[12px]">
+            <span className="truncate font-mono text-ink-soft">{p}</span>
+            <button
+              onClick={() =>
+                onChange({ ...settings, excludes: (settings.excludes ?? []).filter((x) => x !== p) })
+              }
+              className="ml-auto shrink-0 text-ink-soft hover:text-ink"
+              title="Remove"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={async () => {
+          const dir = await window.dscan.pickFolder()
+          if (dir && !(settings.excludes ?? []).includes(dir))
+            onChange({ ...settings, excludes: [...(settings.excludes ?? []), dir] })
+        }}
+        className="mt-2 rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-semibold text-ink-soft hover:text-ink"
+      >
+        Add folder…
+      </button>
+
       <button
         onClick={onClose}
         className="mt-6 w-full rounded-xl bg-accent px-4 py-2.5 font-semibold text-white"
