@@ -4,6 +4,7 @@ import { ItemRow } from './ItemRow'
 import { Check, type CheckState } from './Check'
 import { TIER } from '../lib/tiers'
 import { groupState } from '../lib/selection'
+import { sortItems } from '../lib/sortItems'
 import { humanBytes } from '../lib/format'
 
 export function Group({
@@ -19,7 +20,10 @@ export function Group({
   onToggle: (id: string) => void
   onToggleGroup: (tier: Tier) => void
 }) {
-  const rows = items.filter((i) => i.tier === tier)
+  const rows = sortItems(
+    items.filter((i) => i.tier === tier),
+    'size',
+  )
   const [open, setOpen] = useState(tier !== 'KEEP')
   if (rows.length === 0) return null
 
