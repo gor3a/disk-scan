@@ -4,6 +4,7 @@ import { existsSync, writeFileSync } from 'node:fs'
 import { Sidecar } from './sidecar'
 import { createSplash } from './splash'
 import { Store } from './store'
+import { applySchedule, type Cadence } from './schedule'
 import type { Request } from '../src/lib/protocol'
 
 const SPLASH_MIN_MS = 1100 // keep the brand moment visible even on fast loads
@@ -135,6 +136,9 @@ ipcMain.handle('dscan:getSettings', () => store.getSettings())
 ipcMain.handle('dscan:setSettings', (_e, partial) => store.setSettings(partial))
 ipcMain.handle('dscan:getHistory', () => store.getHistory())
 ipcMain.handle('dscan:addHistory', (_e, entry) => store.addHistory(entry))
+ipcMain.handle('dscan:setSchedule', (_e, opts: { cadence: Cadence; autoClean: boolean }) =>
+  applySchedule(opts.cadence, opts.autoClean, resolveSidecar()),
+)
 
 ipcMain.handle('dscan:pickFolder', async () => {
   const res = await dialog.showOpenDialog({

@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld('dscan', {
   setSettings: (partial: unknown) => ipcRenderer.invoke('dscan:setSettings', partial),
   getHistory: () => ipcRenderer.invoke('dscan:getHistory'),
   addHistory: (entry: unknown) => ipcRenderer.invoke('dscan:addHistory', entry),
+  setSchedule: (opts: { cadence: 'off' | 'daily' | 'weekly'; autoClean: boolean }) =>
+    ipcRenderer.invoke('dscan:setSchedule', opts),
   onEvent: (cb: (e: DscanEvent) => void) => {
     const handler = (_: unknown, e: DscanEvent) => cb(e)
     ipcRenderer.on('dscan:event', handler)

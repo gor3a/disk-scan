@@ -39,6 +39,10 @@ declare global {
         Array<{ at: number; freed: number; trashed: number; items: number; tab: string }>
       >
       addHistory: (e: { at: number; freed: number; trashed: number; items: number; tab: string }) => void
+      setSchedule: (opts: {
+        cadence: 'off' | 'daily' | 'weekly'
+        autoClean: boolean
+      }) => Promise<{ ok: boolean; error?: string }>
     }
   }
 }
@@ -87,6 +91,14 @@ export default function App() {
     mql.addEventListener('change', apply)
     return () => mql.removeEventListener('change', apply)
   }, [s.settings.theme])
+
+  // (Re)apply the OS scheduled-scan job when the schedule settings change.
+  useEffect(() => {
+    window.dscan.setSchedule({
+      cadence: s.settings.schedule ?? 'off',
+      autoClean: s.settings.scheduleAutoClean ?? false,
+    })
+  }, [s.settings.schedule, s.settings.scheduleAutoClean])
 
   const excludes = s.settings.excludes ?? []
 
