@@ -21,17 +21,19 @@ type ItemDTO struct {
 	Source     string   `json:"source"` // catalog|heuristic
 	Selectable bool     `json:"selectable"`
 	Modified   int64    `json:"modified,omitempty"`
+	Kind       string   `json:"kind,omitempty"`
 	Command    []string `json:"command,omitempty"`
 }
 
 // Request is a command from the GUI (main → sidecar stdin).
 type Request struct {
-	Cmd    string   `json:"cmd"`    // scan|clean|cancel
-	Kind   string   `json:"kind"`   // scan: "caches" (default) | "projects"
-	Root   string   `json:"root"`   // scan projects: folder to search
-	System bool     `json:"system"` // scan: include system dirs
-	IDs    []string `json:"ids"`    // clean: which items
-	DryRun bool     `json:"dryRun"` // clean: preview only
+	Cmd         string   `json:"cmd"`         // scan|clean|cancel
+	Kind        string   `json:"kind"`        // scan: "caches" (default) | "projects"
+	Root        string   `json:"root"`        // scan projects: folder to search
+	System      bool     `json:"system"`      // scan: include system dirs
+	IDs         []string `json:"ids"`         // clean: which items
+	DryRun      bool     `json:"dryRun"`      // clean: preview only
+	KillLockers bool     `json:"killLockers"` // clean: SIGTERM processes holding the paths first
 }
 
 // Event is an outbound message (sidecar → main stdout). Only the fields
@@ -96,6 +98,7 @@ func projectDTO(p engine.Project) ItemDTO {
 		Source:     "heuristic",
 		Selectable: true,
 		Modified:   p.Modified,
+		Kind:       p.Kind,
 	}
 }
 

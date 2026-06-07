@@ -12,6 +12,7 @@ export interface ItemDTO {
   source: 'catalog' | 'heuristic'
   selectable: boolean
   modified?: number // unix secs, projects only
+  kind?: string // project artifact kind (node_modules, .next, target, …)
   command?: string[]
 }
 

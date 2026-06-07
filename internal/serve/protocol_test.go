@@ -11,6 +11,14 @@ func engineProject(path, dir string, bytes, modified int64) engine.Project {
 	return engine.Project{Path: path, Dir: dir, Bytes: bytes, Modified: modified}
 }
 
+func TestProjectDTOCarriesKind(t *testing.T) {
+	p := engine.Project{Path: "/a/.next", Dir: "/a", Kind: ".next", Bytes: 5, Modified: 1}
+	dto := projectDTO(p)
+	if dto.Kind != ".next" || dto.Category != "Projects" {
+		t.Fatalf("dto = %+v", dto)
+	}
+}
+
 func TestProjectDTO(t *testing.T) {
 	p := engineProject("/Users/me/dev/work-app/node_modules", "/Users/me/dev/work-app", 880, 1700000000)
 	dto := projectDTO(p)
