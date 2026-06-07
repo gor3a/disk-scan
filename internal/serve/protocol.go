@@ -30,6 +30,7 @@ type Request struct {
 	Cmd         string   `json:"cmd"`         // scan|clean|cancel
 	Kind        string   `json:"kind"`        // scan: "caches" (default) | "projects"
 	Root        string   `json:"root"`        // scan projects: folder to search
+	Excludes    []string `json:"excludes"`    // scan: skip these path prefixes
 	System      bool     `json:"system"`      // scan: include system dirs
 	IDs         []string `json:"ids"`         // clean: which items
 	DryRun      bool     `json:"dryRun"`      // clean: preview only

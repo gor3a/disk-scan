@@ -158,6 +158,27 @@ func TestServeCleanKillLockersRunsCleanly(t *testing.T) {
 	}
 }
 
+func TestServeScanProjectsExcludes(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "skip", "node_modules", "x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "skip", "node_modules", "x", "f"), make([]byte, 2048), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out strings.Builder
+	in := strings.NewReader(`{"cmd":"scan","kind":"projects","root":"` + root +
+		`","excludes":["` + filepath.Join(root, "skip") + `"]}` + "\n")
+	if err := Run(in, &out, "darwin", root); err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range decodeEvents(t, out.String()) {
+		if e.Event == "item" {
+			t.Error("excluded project must not be scanned")
+		}
+	}
+}
+
 func TestServeCleanDryRunRemovesNothing(t *testing.T) {
 	home := t.TempDir()
 	target := filepath.Join(home, ".cache", "x")

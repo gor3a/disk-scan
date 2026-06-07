@@ -75,14 +75,14 @@ func (s *server) startScan(req Request) {
 	go func() {
 		defer s.wg.Done()
 		if req.Kind == "projects" {
-			s.runScanProjects(req.Root, cancel)
+			s.runScanProjects(req.Root, cancel, req.Excludes)
 		} else {
-			s.runScan(req.System, cancel)
+			s.runScan(req.System, cancel, req.Excludes)
 		}
 	}()
 }
 
-func (s *server) runScanProjects(root string, cancel <-chan struct{}) {
+func (s *server) runScanProjects(root string, cancel <-chan struct{}, excludes []string) {
 	if root == "" {
 		root = s.home
 	}
@@ -100,11 +100,11 @@ func (s *server) runScanProjects(root string, cancel <-chan struct{}) {
 		n++
 		bytes += p.Bytes
 		s.emit(Event{Event: "progress", Phase: "projects", Scanned: n, Bytes: bytes, Path: p.Path})
-	}, cancel)
+	}, cancel, excludes)
 	s.emit(Event{Event: "scanDone", Reclaimable: bytes})
 }
 
-func (s *server) runScan(system bool, cancel <-chan struct{}) {
+func (s *server) runScan(system bool, cancel <-chan struct{}, excludes []string) {
 	if d, err := engine.DiskUsage(s.home); err == nil {
 		s.emit(Event{Event: "disk", Disk: &diskInfo{Used: d.Used, Free: d.Free, Total: d.Total}})
 	}
@@ -124,7 +124,7 @@ func (s *server) runScan(system bool, cancel <-chan struct{}) {
 			phase = "largeFiles"
 		}
 		s.emit(Event{Event: "progress", Phase: phase, Scanned: n, Bytes: bytes})
-	}, cancel)
+	}, cancel, excludes)
 
 	// Reclaimable matches the GUI's default selection: SAFE, regenerable,
 	// path-backed items (never tool-commands).
