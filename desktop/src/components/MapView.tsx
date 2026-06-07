@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Map as MapIcon, ChevronRight, ExternalLink, Ban, Trash2 } from 'lucide-react'
 import type { TreeNode } from '../lib/protocol'
 import { squarify } from '../lib/treemap'
 import { humanBytes } from '../lib/format'
@@ -57,7 +58,7 @@ export function MapView({
   return (
     <div className="flex flex-1 flex-col px-5 pb-5">
       <div className="my-3 flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-[12.5px]">
-        <span>🗺️</span>
+        <MapIcon size={15} strokeWidth={1.75} className="text-ink-soft" />
         <button onClick={() => setStack([])} className="font-semibold text-accent">
           {rootName}
         </button>
@@ -65,9 +66,10 @@ export function MapView({
           <button
             key={n.path}
             onClick={() => setStack(stack.slice(0, idx + 1))}
-            className="text-ink-soft hover:text-ink"
+            className="flex items-center text-ink-soft hover:text-ink"
           >
-            › {n.name}
+            <ChevronRight size={13} strokeWidth={1.75} />
+            {n.name}
           </button>
         ))}
         <span className="ml-auto truncate font-mono text-[11px] text-ink-soft">
@@ -129,21 +131,21 @@ export function MapView({
           <span className="ml-auto flex shrink-0 gap-2">
             <button
               onClick={() => onReveal(selected.path)}
-              className="rounded-md px-2 py-1 font-semibold text-ink hover:bg-paper"
+              className="flex items-center gap-1.5 rounded-md px-2 py-1 font-semibold text-ink hover:bg-paper"
             >
-              ⤢ Reveal
+              <ExternalLink size={14} strokeWidth={1.75} /> Reveal
             </button>
             <button
               onClick={() => onExclude(selected.path)}
-              className="rounded-md px-2 py-1 font-semibold text-ink hover:bg-paper"
+              className="flex items-center gap-1.5 rounded-md px-2 py-1 font-semibold text-ink hover:bg-paper"
             >
-              🚫 Exclude
+              <Ban size={14} strokeWidth={1.75} /> Exclude
             </button>
             <button
               onClick={() => onTrash(selected)}
-              className="rounded-md px-2 py-1 font-semibold text-[#b91c1c] hover:bg-paper"
+              className="flex items-center gap-1.5 rounded-md px-2 py-1 font-semibold text-[#b91c1c] hover:bg-paper"
             >
-              🗑 Move to Trash
+              <Trash2 size={14} strokeWidth={1.75} /> Move to Trash
             </button>
           </span>
         </div>
