@@ -65,6 +65,10 @@ function createWindow() {
         )
         await new Promise((r) => setTimeout(r, 4000))
       }
+      if (process.env.DSCAN_SHOT_JS) {
+        await win!.webContents.executeJavaScript(process.env.DSCAN_SHOT_JS)
+        await new Promise((r) => setTimeout(r, 400))
+      }
       const img = await win!.webContents.capturePage()
       writeFileSync(process.env.DSCAN_SHOT!, img.toPNG())
     })
