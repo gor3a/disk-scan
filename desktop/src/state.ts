@@ -6,6 +6,7 @@ export type Tab = 'cleanup' | 'projects'
 export interface Settings {
   staleDays: number
   lastProjectRoot?: string
+  theme?: 'system' | 'light' | 'dark'
 }
 export type Modal = 'about' | 'settings' | 'uninstall' | null
 
@@ -58,7 +59,7 @@ export function initialState(): State {
     cleanup: emptyTab(),
     projects: emptyTab(),
     pendingCleanIds: [],
-    settings: { staleDays: 30 },
+    settings: { staleDays: 30, theme: 'system' },
     modal: null,
   }
 }

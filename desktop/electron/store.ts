@@ -4,6 +4,7 @@ import { join } from 'node:path'
 export interface Settings {
   staleDays: number
   lastProjectRoot?: string
+  theme?: 'system' | 'light' | 'dark'
 }
 export interface HistoryEntry {
   at: number
@@ -13,7 +14,7 @@ export interface HistoryEntry {
   tab: 'cleanup' | 'projects'
 }
 
-const DEFAULT_SETTINGS: Settings = { staleDays: 30 }
+const DEFAULT_SETTINGS: Settings = { staleDays: 30, theme: 'system' }
 
 // Store reads/writes typed JSON files under a base directory (the app's
 // userData in production, a temp dir in tests).

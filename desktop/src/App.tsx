@@ -2,6 +2,7 @@ import { useEffect, useReducer, useRef, useState } from 'react'
 import { reduce, initialState, activeTab, type Tab, type Settings, type CleanResult } from './state'
 import { toggle, toggleGroup, selectedIds, selectedTotal, defaultSelection } from './lib/selection'
 import { staleSelection } from './lib/projects'
+import { resolveTheme } from './lib/theme'
 import { humanBytes } from './lib/format'
 import { HeroBar } from './components/HeroBar'
 import { Group } from './components/Group'
@@ -68,6 +69,18 @@ export default function App() {
       .getHistory()
       .then((h) => setStats({ total: h.reduce((n, e) => n + e.freed + e.trashed, 0), cleans: h.length }))
   }, [])
+
+  // Apply the theme: toggle `dark` on <html> from the setting + OS preference.
+  useEffect(() => {
+    const mql = window.matchMedia('(prefers-color-scheme: dark)')
+    const apply = () => {
+      const mode = resolveTheme(s.settings.theme ?? 'system', mql.matches)
+      document.documentElement.classList.toggle('dark', mode === 'dark')
+    }
+    apply()
+    mql.addEventListener('change', apply)
+    return () => mql.removeEventListener('change', apply)
+  }, [s.settings.theme])
 
   const scanCleanup = () => {
     touched.current.cleanup = false

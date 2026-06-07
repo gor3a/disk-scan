@@ -5,7 +5,7 @@ export function SupportButton({ onClick }: { onClick: () => void }) {
     <button
       onClick={onClick}
       title="Support dscan on Ko-fi"
-      className="group flex items-center gap-1.5 rounded-full border border-[#ecd6a6] bg-gradient-to-b from-[#fdf4de] to-[#f7e6bf] px-3 py-1 text-[11.5px] font-semibold text-[#8a5a16] shadow-[0_1px_2px_rgba(138,90,22,.18)] transition-all duration-200 hover:-translate-y-0.5 hover:from-[#fbeecb] hover:to-[#f3dca8] hover:shadow-[0_4px_10px_-2px_rgba(138,90,22,.4)]"
+      className="group flex items-center gap-1.5 rounded-full border border-[#ecd6a6] bg-gradient-to-b from-[#fdf4de] to-[#f7e6bf] px-3 py-1 text-[11.5px] font-semibold text-[#8a5a16] shadow-[0_1px_2px_rgba(138,90,22,.18)] transition-all duration-200 hover:-translate-y-0.5 hover:from-[#fbeecb] hover:to-[#f3dca8] hover:shadow-[0_4px_10px_-2px_rgba(138,90,22,.4)] dark:border-[#5a4a2a] dark:from-[#2c2a22] dark:to-[#332e20] dark:text-[#e3b873] dark:hover:from-[#343026] dark:hover:to-[#3c3526]"
     >
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="-ml-0.5">
         <path className="steam" d="M8.5 2.5c.6.8-.4 1.5-.4 2.4s.7 1.2.4 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity="0.55" />

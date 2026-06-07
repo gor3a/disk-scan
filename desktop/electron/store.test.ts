@@ -12,14 +12,18 @@ beforeEach(() => {
 describe('Store', () => {
   it('returns defaults when files are missing', () => {
     const s = new Store(dir)
-    expect(s.getSettings()).toEqual({ staleDays: 30 })
+    expect(s.getSettings()).toEqual({ staleDays: 30, theme: 'system' })
     expect(s.getHistory()).toEqual([])
   })
   it('merges partial settings and persists', () => {
     const s = new Store(dir)
     s.setSettings({ staleDays: 90 })
     s.setSettings({ lastProjectRoot: '/x' })
-    expect(new Store(dir).getSettings()).toEqual({ staleDays: 90, lastProjectRoot: '/x' })
+    expect(new Store(dir).getSettings()).toEqual({
+      staleDays: 90,
+      lastProjectRoot: '/x',
+      theme: 'system',
+    })
   })
   it('appends history entries', () => {
     const s = new Store(dir)

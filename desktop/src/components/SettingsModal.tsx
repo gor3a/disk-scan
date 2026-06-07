@@ -13,6 +13,24 @@ export function SettingsModal({
   return (
     <Modal onClose={onClose}>
       <h2 className="font-display text-xl text-ink">Settings</h2>
+
+      <div className="mt-5 text-[13px] font-semibold text-ink">Appearance</div>
+      <div className="mt-2 flex gap-1 rounded-xl border border-line bg-paper p-1">
+        {(['system', 'light', 'dark'] as const).map((opt) => (
+          <button
+            key={opt}
+            onClick={() => onChange({ ...settings, theme: opt })}
+            className={`flex-1 rounded-lg px-2 py-1.5 text-[12.5px] font-semibold capitalize transition-colors ${
+              (settings.theme ?? 'system') === opt
+                ? 'bg-surface text-accent shadow-card'
+                : 'text-ink-soft hover:text-ink'
+            }`}
+          >
+            {opt}
+          </button>
+        ))}
+      </div>
+
       <label className="mt-5 block text-[13px] font-semibold text-ink">
         Auto-select projects older than
         <span className="ml-2 font-mono text-accent">{settings.staleDays} days</span>
