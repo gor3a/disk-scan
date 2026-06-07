@@ -8,6 +8,8 @@ export interface Settings {
   lastProjectRoot?: string
   theme?: 'system' | 'light' | 'dark'
   excludes?: string[]
+  schedule?: 'off' | 'daily' | 'weekly'
+  scheduleAutoClean?: boolean
 }
 export type Modal = 'about' | 'settings' | 'uninstall' | null
 
@@ -74,7 +76,13 @@ export function initialState(): State {
     projects: emptyTab(),
     map: emptyMap(),
     pendingCleanIds: [],
-    settings: { staleDays: 30, theme: 'system', excludes: [] },
+    settings: {
+      staleDays: 30,
+      theme: 'system',
+      excludes: [],
+      schedule: 'off',
+      scheduleAutoClean: false,
+    },
     modal: null,
   }
 }

@@ -6,6 +6,8 @@ export interface Settings {
   lastProjectRoot?: string
   theme?: 'system' | 'light' | 'dark'
   excludes?: string[]
+  schedule?: 'off' | 'daily' | 'weekly'
+  scheduleAutoClean?: boolean
 }
 export interface HistoryEntry {
   at: number
@@ -15,7 +17,13 @@ export interface HistoryEntry {
   tab: 'cleanup' | 'projects'
 }
 
-const DEFAULT_SETTINGS: Settings = { staleDays: 30, theme: 'system', excludes: [] }
+const DEFAULT_SETTINGS: Settings = {
+  staleDays: 30,
+  theme: 'system',
+  excludes: [],
+  schedule: 'off',
+  scheduleAutoClean: false,
+}
 
 // Store reads/writes typed JSON files under a base directory (the app's
 // userData in production, a temp dir in tests).
