@@ -137,6 +137,9 @@ func runCommand(argv []string) error {
 // trashDirOverride lets tests redirect the trash destination.
 func trashDirOverride() string { return os.Getenv("DSCAN_TRASH_DIR") }
 
+// Trash moves a single path to the Trash (recoverable). Honors DSCAN_TRASH_DIR.
+func Trash(path string) error { return trash(path) }
+
 func moveInto(src, dstDir string) error {
 	if err := os.MkdirAll(dstDir, 0o755); err != nil {
 		return err
