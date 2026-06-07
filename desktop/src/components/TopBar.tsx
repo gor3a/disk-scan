@@ -1,3 +1,4 @@
+import { MoreHorizontal } from 'lucide-react'
 import { Mark } from './Mark'
 
 export function TopBar({ onToggleMenu }: { onToggleMenu: () => void }) {
@@ -8,9 +9,9 @@ export function TopBar({ onToggleMenu }: { onToggleMenu: () => void }) {
       <button
         onClick={onToggleMenu}
         aria-label="Menu"
-        className="ml-auto rounded-lg px-2 py-1 text-lg leading-none text-ink-soft hover:bg-paper hover:text-ink"
+        className="ml-auto rounded-lg px-2 py-1 leading-none text-ink-soft hover:bg-paper hover:text-ink"
       >
-        ⋯
+        <MoreHorizontal size={18} strokeWidth={1.75} />
       </button>
     </header>
   )

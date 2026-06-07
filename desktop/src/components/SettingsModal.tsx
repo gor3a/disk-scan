@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import { Modal } from './Modal'
 import type { Settings } from '../state'
 
@@ -60,8 +61,9 @@ export function SettingsModal({
               }
               className="ml-auto shrink-0 text-ink-soft hover:text-ink"
               title="Remove"
+              aria-label="Remove"
             >
-              ×
+              <X size={13} strokeWidth={2} />
             </button>
           </div>
         ))}

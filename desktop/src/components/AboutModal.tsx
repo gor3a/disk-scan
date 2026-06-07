@@ -1,3 +1,4 @@
+import { Coffee } from 'lucide-react'
 import { Modal } from './Modal'
 import { Mark } from './Mark'
 import { humanBytes } from '../lib/format'
@@ -29,7 +30,9 @@ export function AboutModal({
         </p>
         <div className="mt-5 flex gap-3 text-[13px] font-semibold text-accent">
           <button onClick={onContact}>Contact</button>
-          <button onClick={onSupport}>Support ☕</button>
+          <button onClick={onSupport} className="inline-flex items-center gap-1.5">
+            <Coffee size={14} strokeWidth={1.75} /> Support
+          </button>
         </div>
         <button onClick={onClose} className="mt-5 text-[13px] text-ink-soft underline underline-offset-4">
           Close
