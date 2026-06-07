@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Folder } from 'lucide-react'
 import type { ItemDTO } from '../lib/protocol'
 import { humanBytes } from '../lib/format'
 import { sortItems, type SortBy } from '../lib/sortItems'
@@ -35,7 +36,7 @@ export function ProjectsView({
   return (
     <div className="flex-1 overflow-y-auto px-5 pb-6">
       <div className="my-3 flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-[12.5px]">
-        <span>📁</span>
+        <Folder size={15} strokeWidth={1.75} className="text-ink-soft" />
         <span className="font-mono text-ink-soft">{root}</span>
         <span className="text-ink-soft/70">— folder searched for project artifacts</span>
         <button onClick={onChangeFolder} className="ml-auto font-semibold text-accent">

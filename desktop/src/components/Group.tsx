@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ChevronRight } from 'lucide-react'
 import type { ItemDTO, Tier } from '../lib/protocol'
 import { ItemRow } from './ItemRow'
 import { Check, type CheckState } from './Check'
@@ -61,9 +62,11 @@ export function Group({
         </button>
         <span className="ml-auto flex shrink-0 items-center gap-3 text-ink-soft">
           <span className="font-mono text-[12.5px] tnum">{humanBytes(total)}</span>
-          <span className={`text-lg leading-none transition-transform ${open ? 'rotate-90' : ''}`}>
-            ›
-          </span>
+          <ChevronRight
+            size={16}
+            strokeWidth={1.75}
+            className={`shrink-0 transition-transform ${open ? 'rotate-90' : ''}`}
+          />
         </span>
       </div>
       {open && (
