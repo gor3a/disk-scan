@@ -15,7 +15,7 @@ func TestFindProjectsSkipsNestedAndReportsLastUsed(t *testing.T) {
 	mkfileP(t, filepath.Join(root, "b", "node_modules", "f"), 4096)
 
 	var got []Project
-	FindProjects(root, func(p Project) { got = append(got, p) }, nil)
+	FindProjects(root, func(p Project) { got = append(got, p) }, nil, nil)
 
 	if len(got) != 2 {
 		t.Fatalf("expected 2 projects (nested skipped), got %d: %+v", len(got), got)
@@ -50,7 +50,7 @@ func TestFindProjectsArtifactKinds(t *testing.T) {
 	mkfileP(t, filepath.Join(root, "c-proj", "build", "f"), 1024)
 
 	kinds := map[string]string{}
-	FindProjects(root, func(p Project) { kinds[filepath.Base(p.Dir)] = p.Kind }, nil)
+	FindProjects(root, func(p Project) { kinds[filepath.Base(p.Dir)] = p.Kind }, nil, nil)
 
 	if kinds["node-app"] != "node_modules" {
 		t.Errorf("node-app kind = %q", kinds["node-app"])
@@ -69,6 +69,20 @@ func TestFindProjectsArtifactKinds(t *testing.T) {
 	}
 }
 
+func TestFindProjectsSkipsExcluded(t *testing.T) {
+	root := t.TempDir()
+	mkfileP(t, filepath.Join(root, "keep", "node_modules", "f"), 1024)
+	mkfileP(t, filepath.Join(root, "skip", "node_modules", "f"), 1024)
+
+	var dirs []string
+	FindProjects(root, func(p Project) { dirs = append(dirs, filepath.Base(p.Dir)) }, nil,
+		[]string{filepath.Join(root, "skip")})
+
+	if len(dirs) != 1 || dirs[0] != "keep" {
+		t.Fatalf("want [keep], got %v", dirs)
+	}
+}
+
 func TestFindProjectsModifiedIgnoresNodeModules(t *testing.T) {
 	root := t.TempDir()
 	proj := filepath.Join(root, "p")
@@ -79,7 +93,7 @@ func TestFindProjectsModifiedIgnoresNodeModules(t *testing.T) {
 	_ = os.Chtimes(filepath.Join(proj, "main.go"), old, old)
 
 	var got []Project
-	FindProjects(root, func(p Project) { got = append(got, p) }, nil)
+	FindProjects(root, func(p Project) { got = append(got, p) }, nil, nil)
 	if len(got) != 1 {
 		t.Fatalf("want 1 project, got %d", len(got))
 	}

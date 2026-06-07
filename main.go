@@ -44,7 +44,7 @@ func main() {
 		return
 	}
 	home, _ := os.UserHomeDir()
-	items := engine.ScanAll(runtime.GOOS, home, *flagSystem, nil, nil)
+	items := engine.ScanAll(runtime.GOOS, home, *flagSystem, nil, nil, nil)
 
 	// Non-interactive mode: clean the regenerable SAFE items and exit. Useful
 	// for scripts/CI and any context without a TTY.

@@ -65,12 +65,13 @@ type Found = rules.Item
 // TopNLargest measures each immediate child dir/file of root and returns the n
 // largest, skipping any path present in covered. Sorted largest-first.
 func TopNLargest(root string, n int, covered map[string]bool) []Found {
-	return TopNLargestCancel(root, n, covered, nil)
+	return TopNLargestCancel(root, n, covered, nil, nil)
 }
 
 // TopNLargestCancel is TopNLargest that stops measuring further children once
 // cancel is closed, returning whatever it has so far. A nil cancel never aborts.
-func TopNLargestCancel(root string, n int, covered map[string]bool, cancel <-chan struct{}) []Found {
+// Children under any excluded prefix are skipped.
+func TopNLargestCancel(root string, n int, covered map[string]bool, cancel <-chan struct{}, excludes []string) []Found {
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		return nil
@@ -81,7 +82,7 @@ func TopNLargestCancel(root string, n int, covered map[string]bool, cancel <-cha
 			break
 		}
 		p := filepath.Join(root, de.Name())
-		if overlapsCovered(p, covered) {
+		if IsExcluded(p, excludes) || overlapsCovered(p, covered) {
 			continue
 		}
 		size, _ := DirSizeCancel(p, cancel)

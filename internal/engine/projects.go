@@ -22,7 +22,7 @@ type Project struct {
 // without recursing into a found one, streaming each via onItem. It stays on a
 // single filesystem, skips symlinked dirs, tolerates permission errors, and
 // stops early when cancel is closed (nil = never).
-func FindProjects(root string, onItem func(Project), cancel <-chan struct{}) {
+func FindProjects(root string, onItem func(Project), cancel <-chan struct{}, excludes []string) {
 	info, err := os.Stat(root)
 	if err != nil || !info.IsDir() {
 		return
@@ -37,6 +37,9 @@ func FindProjects(root string, onItem func(Project), cancel <-chan struct{}) {
 			return nil // skip unreadable entries and files
 		}
 		if d.Type()&fs.ModeSymlink != 0 {
+			return fs.SkipDir
+		}
+		if scan.IsExcluded(path, excludes) {
 			return fs.SkipDir
 		}
 		if fi, e := d.Info(); e == nil && deviceID(fi) != rootDev {

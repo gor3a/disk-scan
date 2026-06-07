@@ -15,7 +15,7 @@ import (
 // stream rows in. Catalog items stream as they are measured; heuristic (top-N)
 // items stream after. cancel (may be nil) aborts the scan early, returning
 // whatever was collected so far.
-func ScanAll(goos, home string, system bool, onItem func(rules.Item), cancel <-chan struct{}) []rules.Item {
+func ScanAll(goos, home string, system bool, onItem func(rules.Item), cancel <-chan struct{}, excludes []string) []rules.Item {
 	var items []rules.Item
 	covered := map[string]bool{}
 	for _, e := range rules.Catalog(goos, home) {
@@ -34,6 +34,9 @@ func ScanAll(goos, home string, system bool, onItem func(rules.Item), cancel <-c
 			continue
 		}
 		path := e.Expand(home)
+		if scan.IsExcluded(path, excludes) {
+			continue
+		}
 		size, _ := scan.DirSizeCancel(path, cancel)
 		if size == 0 {
 			continue
@@ -49,7 +52,7 @@ func ScanAll(goos, home string, system bool, onItem func(rules.Item), cancel <-c
 		}
 	}
 	if !canceled(cancel) {
-		heur := scan.TopNLargestCancel(home, 20, covered, cancel)
+		heur := scan.TopNLargestCancel(home, 20, covered, cancel, excludes)
 		for _, it := range heur {
 			if onItem != nil {
 				onItem(it)
