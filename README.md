@@ -31,6 +31,21 @@ The builds are currently **unsigned**:
 It auto-scans on launch, pre-selects the regenerable `SAFE` caches, and reclaims
 space in one click — `REVIEW` items are opt-in, `KEEP` items are locked.
 
+Highlights:
+
+- **Clean up** — caches & build output plus your largest files, grouped by safety
+  tier; clean the pre-selected SAFE items in one click.
+- **Projects** — find and clear heavy build artifacts (`node_modules`, `.next`,
+  `target`, `__pycache__`, …) across a folder, grouped by kind.
+- **Map** — a visual disk-usage treemap: drill into folders and Reveal, Exclude,
+  or Move-to-Trash a tile.
+- **Exclude folders** — mark folders dscan should never scan or clean.
+- **Scheduled scans** — an optional background scan (daily/weekly) that notifies
+  you, with an opt-in auto-clean of SAFE caches.
+- **Dark mode** — System / Light / Dark, following your OS by default.
+- **Self-update** — Linux installs updates in the background; macOS notifies and
+  links to the download.
+
 ## Command line
 
 ```
