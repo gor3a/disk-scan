@@ -5,6 +5,7 @@ import { Sidecar } from './sidecar'
 import { createSplash } from './splash'
 import { Store } from './store'
 import { applySchedule, type Cadence } from './schedule'
+import { initUpdater } from './updater'
 import type { Request } from '../src/lib/protocol'
 
 const SPLASH_MIN_MS = 1100 // keep the brand moment visible even on fast loads
@@ -81,6 +82,8 @@ function createWindow() {
   sidecar = new Sidecar(resolveSidecar())
   sidecar.on('event', (e) => win?.webContents.send('dscan:event', e))
   sidecar.start()
+
+  initUpdater(win)
 }
 
 ipcMain.on('dscan:send', (_e, req: Request) => sidecar?.send(req))
