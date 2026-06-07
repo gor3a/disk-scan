@@ -10,8 +10,15 @@ extraResources:
   - from: resources/dscan
     to: dscan
 mac:
-  target: dmg
+  # Two arch-specific dmgs (Apple Silicon + Intel). Each bundles the same fat
+  # (universal) Go sidecar, which runs on either — avoiding a brittle
+  # universal-app merge step.
+  target:
+    - target: dmg
+      arch: [arm64, x64]
   icon: build/icon.icns
+dmg:
+  artifactName: ${productName}-${version}-${arch}.${ext}
   category: public.app-category.utilities
   # unsigned for MVP — disable auto-signing / notarization
   identity: null
