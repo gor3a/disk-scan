@@ -48,6 +48,8 @@ export default function App() {
   const startedProjects = useRef(false)
   const pendingCount = useRef(0)
   const lastResult = useRef<CleanResult | undefined>(undefined)
+  // Auto-selection follows incoming items until the user manually toggles.
+  const touched = useRef<{ cleanup: boolean; projects: boolean }>({ cleanup: false, projects: false })
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [version, setVersion] = useState('')
@@ -68,10 +70,12 @@ export default function App() {
   }, [])
 
   const scanCleanup = () => {
+    touched.current.cleanup = false
     dispatch({ type: 'startScan', tab: 'cleanup' })
     window.dscan.send({ cmd: 'scan', kind: 'caches' })
   }
   const scanProjects = (root: string) => {
+    touched.current.projects = false
     projectsRoot.current = root
     dispatch({ type: 'startScan', tab: 'projects' })
     window.dscan.send({ cmd: 'scan', kind: 'projects', root: root === '~' ? '' : root })
@@ -94,18 +98,26 @@ export default function App() {
 
   const t = activeTab(s)
   const setSelection = (sel: Set<string>) => dispatch({ type: 'setSelection', selection: sel })
-  const onToggle = (id: string) => setSelection(toggle(t.selection, id, t.items))
-  const onToggleGroup = (tier: Tier) => setSelection(toggleGroup(t.selection, t.items, tier))
+  const onToggle = (id: string) => {
+    touched.current[s.tab] = true
+    setSelection(toggle(t.selection, id, t.items))
+  }
+  const onToggleGroup = (tier: Tier) => {
+    touched.current[s.tab] = true
+    setSelection(toggleGroup(t.selection, t.items, tier))
+  }
 
+  // Re-derive the default selection as items stream in / the threshold changes,
+  // until the user manually toggles this tab.
   useEffect(() => {
-    if (t.items.length === 0 || t.selection.size > 0) return
+    if (touched.current[s.tab] || t.items.length === 0) return
     setSelection(
       s.tab === 'projects'
         ? staleSelection(t.items, nowSecs(), s.settings.staleDays)
         : defaultSelection(t.items),
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.tab, t.items.length])
+  }, [s.tab, t.items.length, s.settings.staleDays])
 
   // Log each clean to history + update the running stats.
   useEffect(() => {
