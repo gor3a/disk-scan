@@ -1,3 +1,4 @@
+import { Ban, ExternalLink } from 'lucide-react'
 import type { ItemDTO } from '../lib/protocol'
 import { humanBytes } from '../lib/format'
 import { Check } from './Check'
@@ -36,9 +37,10 @@ export function ItemRow({
               onExclude(item)
             }}
             title="Exclude from scans"
+            aria-label="Exclude from scans"
             className="rounded-md px-1.5 text-ink-soft hover:text-ink"
           >
-            🚫
+            <Ban size={15} strokeWidth={1.75} />
           </button>
           <button
             onClick={(e) => {
@@ -46,9 +48,10 @@ export function ItemRow({
               window.dscan.reveal(item.path)
             }}
             title="Reveal in Finder"
+            aria-label="Reveal in Finder"
             className="rounded-md px-1.5 text-ink-soft hover:text-ink"
           >
-            ⤢
+            <ExternalLink size={15} strokeWidth={1.75} />
           </button>
         </span>
       )}
