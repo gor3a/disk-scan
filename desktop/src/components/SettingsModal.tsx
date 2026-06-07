@@ -77,6 +77,35 @@ export function SettingsModal({
         Add folder…
       </button>
 
+      <div className="mt-6 text-[13px] font-semibold text-ink">Scheduled scan</div>
+      <p className="mt-1 text-[12px] text-ink-soft">Run a background scan and notify you.</p>
+      <div className="mt-2 flex gap-1 rounded-xl border border-line bg-paper p-1">
+        {(['off', 'daily', 'weekly'] as const).map((opt) => (
+          <button
+            key={opt}
+            onClick={() => onChange({ ...settings, schedule: opt })}
+            className={`flex-1 rounded-lg px-2 py-1.5 text-[12.5px] font-semibold capitalize transition-colors ${
+              (settings.schedule ?? 'off') === opt
+                ? 'bg-surface text-accent shadow-card'
+                : 'text-ink-soft hover:text-ink'
+            }`}
+          >
+            {opt}
+          </button>
+        ))}
+      </div>
+      {(settings.schedule ?? 'off') !== 'off' && (
+        <label className="mt-2 flex cursor-pointer items-center gap-2 text-[12.5px] text-ink">
+          <input
+            type="checkbox"
+            checked={settings.scheduleAutoClean ?? false}
+            onChange={(e) => onChange({ ...settings, scheduleAutoClean: e.target.checked })}
+            className="accent-[#1f7a5c]"
+          />
+          Auto-clean SAFE caches each run
+        </label>
+      )}
+
       <button
         onClick={onClose}
         className="mt-6 w-full rounded-xl bg-accent px-4 py-2.5 font-semibold text-white"
