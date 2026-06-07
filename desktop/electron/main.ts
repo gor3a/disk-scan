@@ -1,5 +1,5 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
-import { join } from 'node:path'
+import { join, dirname } from 'node:path'
 import { existsSync, writeFileSync } from 'node:fs'
 import { Sidecar } from './sidecar'
 import { createSplash } from './splash'
@@ -84,6 +84,46 @@ ipcMain.on('dscan:send', (_e, req: Request) => sidecar?.send(req))
 // Restricted to https to avoid opening arbitrary schemes from the renderer.
 ipcMain.on('dscan:openExternal', (_e, url: string) => {
   if (typeof url === 'string' && url.startsWith('https://')) shell.openExternal(url)
+})
+
+ipcMain.handle('dscan:appInfo', () => ({
+  version: app.getVersion(),
+  platform: process.platform,
+  isPackaged: app.isPackaged,
+}))
+
+ipcMain.on('dscan:reveal', (_e, p: string) => {
+  if (typeof p === 'string' && p) shell.showItemInFolder(p)
+})
+
+ipcMain.handle('dscan:uninstall', async () => {
+  if (!app.isPackaged) return { ok: false, reason: 'dev' as const }
+
+  // dscan's own data.
+  const paths = [app.getPath('userData')]
+  if (process.platform === 'darwin') {
+    const home = app.getPath('home')
+    paths.push(
+      join(home, 'Library', 'Caches', 'com.gor3a.dscan'),
+      join(home, 'Library', 'Preferences', 'com.gor3a.dscan.plist'),
+      join(home, 'Library', 'Logs', 'com.gor3a.dscan'),
+    )
+  }
+
+  // The app itself.
+  let appPath = ''
+  if (process.platform === 'darwin') {
+    appPath = dirname(dirname(dirname(app.getPath('exe')))) // …/dscan.app/Contents/MacOS/dscan -> dscan.app
+  } else if (process.env.APPIMAGE) {
+    appPath = process.env.APPIMAGE
+  } else {
+    return { ok: false, reason: 'managed' as const } // e.g. .deb — needs the package manager
+  }
+
+  for (const p of paths) if (existsSync(p)) await shell.trashItem(p).catch(() => {})
+  if (existsSync(appPath)) await shell.trashItem(appPath).catch(() => {})
+  setTimeout(() => app.quit(), 200)
+  return { ok: true as const }
 })
 
 const store = new Store(app.getPath('userData'))
