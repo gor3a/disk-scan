@@ -6,6 +6,27 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-07
+
+### Added
+
+- **Disk map** — a visual **Map** tab: pick a folder and see its contents as a
+  drill-down treemap sized by bytes, with Reveal / Exclude / Move-to-Trash on a
+  tile.
+- **Exclude folders** — mark folders dscan should never scan or clean, from a
+  result row or a managed list in Settings.
+- **Scheduled scans** — an optional background scan (Off / Daily / Weekly) that
+  notifies you when there's space to reclaim, with an opt-in auto-clean of SAFE
+  caches. Uses a LaunchAgent (macOS) / systemd user timer (Linux).
+- **Self-update** — the app checks GitHub for new releases: Linux downloads and
+  installs in the background; macOS notifies and links to the download (full
+  auto-install arrives with code signing).
+
+### Changed
+
+- Replaced all emoji icons with the **lucide** icon set for a cleaner, consistent
+  look in both light and dark themes.
+
 ## [0.4.0] - 2026-06-07
 
 ### Added
@@ -113,7 +134,8 @@ Initial release.
   required) for scripts/CI; `--system` to include system dirs; `--version`.
 - Cross-platform: macOS and Linux. Builds and tests run on both in CI.
 
-[Unreleased]: https://github.com/gor3a/disk-scan/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/gor3a/disk-scan/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/gor3a/disk-scan/releases/tag/v0.5.0
 [0.4.0]: https://github.com/gor3a/disk-scan/releases/tag/v0.4.0
 [0.3.1]: https://github.com/gor3a/disk-scan/releases/tag/v0.3.1
 [0.3.0]: https://github.com/gor3a/disk-scan/releases/tag/v0.3.0
