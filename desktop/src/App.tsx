@@ -10,13 +10,15 @@ import { Group } from './components/Group'
 import { Tabs } from './components/Tabs'
 import { ScanLine } from './components/ScanLine'
 import { ProjectsView } from './components/ProjectsView'
+import { MapView } from './components/MapView'
+import { Modal } from './components/Modal'
 import { SupportButton } from './components/SupportButton'
 import { TopBar } from './components/TopBar'
 import { Menu } from './components/Menu'
 import { AboutModal } from './components/AboutModal'
 import { UninstallModal } from './components/UninstallModal'
 import { SettingsModal } from './components/SettingsModal'
-import type { DscanEvent, Request, Tier, ItemDTO } from './lib/protocol'
+import type { DscanEvent, Request, Tier, ItemDTO, TreeNode } from './lib/protocol'
 
 const KOFI = 'https://ko-fi.com/gor3a'
 const CONTACT = 'https://minasameh.com/contact'
@@ -46,12 +48,15 @@ const nowSecs = () => Math.floor(Date.now() / 1000)
 export default function App() {
   const [s, dispatch] = useReducer(reduce, undefined, initialState)
   const projectsRoot = useRef('~')
+  const mapRoot = useRef('~')
   const startedCleanup = useRef(false)
   const startedProjects = useRef(false)
+  const startedMap = useRef(false)
   const pendingCount = useRef(0)
   const lastResult = useRef<CleanResult | undefined>(undefined)
   // Auto-selection follows incoming items until the user manually toggles.
-  const touched = useRef<{ cleanup: boolean; projects: boolean }>({ cleanup: false, projects: false })
+  const touched = useRef<Record<Tab, boolean>>({ cleanup: false, projects: false, map: false })
+  const [trashTarget, setTrashTarget] = useState<TreeNode | null>(null)
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [version, setVersion] = useState('')
@@ -96,6 +101,11 @@ export default function App() {
     dispatch({ type: 'startScan', tab: 'projects' })
     window.dscan.send({ cmd: 'scan', kind: 'projects', root: root === '~' ? '' : root, excludes })
   }
+  const scanMap = (root: string) => {
+    mapRoot.current = root
+    dispatch({ type: 'startScan', tab: 'map' })
+    window.dscan.send({ cmd: 'map', root: root === '~' ? '' : root, excludes })
+  }
 
   useEffect(() => {
     if (startedCleanup.current) return
@@ -108,6 +118,10 @@ export default function App() {
     if (s.tab === 'projects' && !startedProjects.current) {
       startedProjects.current = true
       scanProjects(projectsRoot.current)
+    }
+    if (s.tab === 'map' && !startedMap.current) {
+      startedMap.current = true
+      scanMap(s.settings.lastProjectRoot ?? '~')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.tab])
@@ -127,7 +141,7 @@ export default function App() {
   // Re-derive the default selection as items stream in / the threshold changes,
   // until the user manually toggles this tab.
   useEffect(() => {
-    if (touched.current[s.tab] || items.length === 0) return
+    if (s.tab === 'map' || touched.current[s.tab] || items.length === 0) return
     setSelection(
       s.tab === 'projects'
         ? staleSelection(items, nowSecs(), s.settings.staleDays)
@@ -152,6 +166,12 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.result])
 
+  // After a trash on the Map tab, re-map the current root.
+  useEffect(() => {
+    if (s.result && s.tab === 'map') scanMap(mapRoot.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.result])
+
   const doClean = () => {
     const ids = selectedIds(t.selection)
     pendingCount.current = ids.length
@@ -169,6 +189,23 @@ export default function App() {
     const next = [...excludes, excludeTargetFor(item)]
     dispatch({ type: 'setSettings', settings: { ...s.settings, excludes: next } })
     window.dscan.setSettings({ excludes: next })
+  }
+  const onMapExclude = (path: string) => {
+    const next = [...excludes, path]
+    dispatch({ type: 'setSettings', settings: { ...s.settings, excludes: next } })
+    window.dscan.setSettings({ excludes: next })
+    scanMap(mapRoot.current)
+  }
+  const onMapChangeFolder = async () => {
+    const dir = await window.dscan.pickFolder()
+    if (dir) {
+      scanMap(dir)
+      window.dscan.setSettings({ lastProjectRoot: dir })
+    }
+  }
+  const confirmTrash = () => {
+    if (trashTarget) window.dscan.send({ cmd: 'trash', path: trashTarget.path })
+    setTrashTarget(null)
   }
 
   const closeModal = () => dispatch({ type: 'openModal', modal: null })
@@ -203,13 +240,15 @@ export default function App() {
 
       <Tabs tab={s.tab} onTab={(tab: Tab) => dispatch({ type: 'setTab', tab })} />
 
-      <HeroBar reclaimable={selectedTotal(items, t.selection)} disk={t.disk} onClean={doClean} />
+      {s.tab !== 'map' && (
+        <HeroBar reclaimable={selectedTotal(items, t.selection)} disk={t.disk} onClean={doClean} />
+      )}
       <ScanLine
-        scanning={t.scanning}
-        phase={t.phase}
-        scanned={t.scanned}
-        bytes={t.bytes}
-        currentPath={t.currentPath}
+        scanning={s.tab === 'map' ? s.map.scanning : t.scanning}
+        phase={s.tab === 'map' ? 'map' : t.phase}
+        scanned={s.tab === 'map' ? s.map.scanned : t.scanned}
+        bytes={s.tab === 'map' ? s.map.bytes : t.bytes}
+        currentPath={s.tab === 'map' ? s.map.currentPath : t.currentPath}
         onStop={() => window.dscan.send({ cmd: 'cancel' })}
       />
 
@@ -227,7 +266,7 @@ export default function App() {
             />
           ))}
         </div>
-      ) : (
+      ) : s.tab === 'projects' ? (
         <ProjectsView
           items={items}
           selection={t.selection}
@@ -236,6 +275,19 @@ export default function App() {
           onToggle={onToggle}
           onChangeFolder={onChangeFolder}
           onExclude={onExclude}
+        />
+      ) : (
+        <MapView
+          tree={s.map.tree}
+          scanning={s.map.scanning}
+          scanned={s.map.scanned}
+          bytes={s.map.bytes}
+          currentPath={s.map.currentPath}
+          root={mapRoot.current}
+          onChangeFolder={onMapChangeFolder}
+          onReveal={(p) => window.dscan.reveal(p)}
+          onExclude={onMapExclude}
+          onTrash={(node) => setTrashTarget(node)}
         />
       )}
 
@@ -280,6 +332,30 @@ export default function App() {
         />
       )}
       {s.modal === 'uninstall' && <UninstallModal onClose={closeModal} />}
+
+      {trashTarget && (
+        <Modal onClose={() => setTrashTarget(null)}>
+          <h2 className="font-display text-xl text-ink">Move to Trash?</h2>
+          <p className="mt-2 text-[13px] text-ink-soft">
+            <span className="font-mono">{trashTarget.path}</span> ({humanBytes(trashTarget.bytes)}) will be
+            moved to the Trash. You can restore it from there.
+          </p>
+          <div className="mt-5 flex gap-2">
+            <button
+              onClick={() => setTrashTarget(null)}
+              className="flex-1 rounded-xl border border-line px-4 py-2.5 font-semibold text-ink"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmTrash}
+              className="flex-1 rounded-xl bg-[#b91c1c] px-4 py-2.5 font-semibold text-white"
+            >
+              Move to Trash
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
