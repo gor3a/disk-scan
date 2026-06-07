@@ -39,7 +39,7 @@ func Run(in io.Reader, out io.Writer, goos, home string) error {
 		case "scan":
 			s.startScan(req)
 		case "clean":
-			s.startClean(req.IDs, req.DryRun)
+			s.startClean(req.IDs, req.DryRun, req.KillLockers)
 		case "cancel":
 			s.cancelScan()
 		}
@@ -134,7 +134,7 @@ func (s *server) runScan(system bool, cancel <-chan struct{}) {
 	s.emit(Event{Event: "scanDone", Reclaimable: total})
 }
 
-func (s *server) startClean(ids []string, dryRun bool) {
+func (s *server) startClean(ids []string, dryRun, kill bool) {
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
@@ -142,12 +142,20 @@ func (s *server) startClean(ids []string, dryRun bool) {
 		// far, so the user can clean found items while the scan keeps running.
 		s.mu.Lock()
 		var items []rules.Item
+		var paths []string
 		for _, id := range ids {
 			if it, ok := s.byID[id]; ok {
 				items = append(items, it)
+				if it.Path != "" {
+					paths = append(paths, it.Path)
+				}
 			}
 		}
 		s.mu.Unlock()
+
+		if kill && !dryRun {
+			killLockers(paths)
+		}
 
 		res := clean.Run(items, clean.Options{DryRun: dryRun})
 

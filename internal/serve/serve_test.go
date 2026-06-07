@@ -125,6 +125,39 @@ func TestServeScanProjects(t *testing.T) {
 	}
 }
 
+func TestServeCleanKillLockersRunsCleanly(t *testing.T) {
+	home := t.TempDir()
+	root := t.TempDir()
+	proj := filepath.Join(root, "app", "node_modules", "x")
+	if err := os.MkdirAll(proj, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(proj, "f"), make([]byte, 2048), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	nm := filepath.Join(root, "app", "node_modules")
+
+	// killLockers runs lsof/SIGTERM before the (already-tested) clean. This
+	// asserts that path doesn't panic and still emits a cleanResult. (Whether
+	// the item is in byID yet is racy by design — mid-scan clean.)
+	var out strings.Builder
+	in := strings.NewReader(
+		`{"cmd":"scan","kind":"projects","root":"` + root + `"}` + "\n" +
+			`{"cmd":"clean","ids":["` + nm + `"],"killLockers":true}` + "\n")
+	if err := Run(in, &out, "darwin", home); err != nil {
+		t.Fatal(err)
+	}
+	var sawResult bool
+	for _, e := range decodeEvents(t, out.String()) {
+		if e.Event == "cleanResult" {
+			sawResult = true
+		}
+	}
+	if !sawResult {
+		t.Error("expected a cleanResult even with killLockers")
+	}
+}
+
 func TestServeCleanDryRunRemovesNothing(t *testing.T) {
 	home := t.TempDir()
 	target := filepath.Join(home, ".cache", "x")
