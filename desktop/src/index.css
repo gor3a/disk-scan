@@ -51,6 +51,17 @@ html.dark {
     height: 100%;
   }
 
+  /* Custom frameless title bar: the bar is the OS drag handle; interactive
+     children opt out so they stay clickable. */
+  .app-drag {
+    -webkit-app-region: drag;
+    app-region: drag;
+  }
+  .app-no-drag {
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
+  }
+
   body {
     margin: 0;
     color: var(--ink);

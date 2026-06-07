@@ -24,6 +24,16 @@ contextBridge.exposeInMainWorld('dscan', {
     install: () => ipcRenderer.invoke('dscan:update:install'),
     openReleases: () => ipcRenderer.invoke('dscan:update:openReleases'),
   },
+  win: {
+    minimize: () => ipcRenderer.send('dscan:win:minimize'),
+    maximize: () => ipcRenderer.send('dscan:win:maximize'),
+    close: () => ipcRenderer.send('dscan:win:close'),
+    onMaximized: (cb: (max: boolean) => void) => {
+      const h = (_: unknown, max: boolean) => cb(max)
+      ipcRenderer.on('dscan:win:maximized', h)
+      return () => ipcRenderer.removeListener('dscan:win:maximized', h)
+    },
+  },
   onEvent: (cb: (e: DscanEvent) => void) => {
     const handler = (_: unknown, e: DscanEvent) => cb(e)
     ipcRenderer.on('dscan:event', handler)

@@ -22,6 +22,18 @@ let win: BrowserWindow | null = null
 let splash: BrowserWindow | null = null
 let sidecar: Sidecar | null = null
 
+// Wire the custom title bar's window controls (frame:false) and keep the
+// renderer's maximize/restore icon in sync with the real window state.
+function registerWindowControls(w: BrowserWindow) {
+  ipcMain.on('dscan:win:minimize', () => w.minimize())
+  ipcMain.on('dscan:win:maximize', () => (w.isMaximized() ? w.unmaximize() : w.maximize()))
+  ipcMain.on('dscan:win:close', () => w.close())
+  const sync = () => !w.isDestroyed() && w.webContents.send('dscan:win:maximized', w.isMaximized())
+  w.on('maximize', sync)
+  w.on('unmaximize', sync)
+  w.webContents.on('did-finish-load', sync)
+}
+
 function createWindow() {
   // Show our icon in the macOS dock during dev (packaged builds get it from
   // electron-builder).
@@ -36,13 +48,18 @@ function createWindow() {
   win = new BrowserWindow({
     width: 920,
     height: 680,
+    minWidth: 720,
+    minHeight: 520,
     show: false,
+    frame: false, // custom in-app title bar (TopBar) with our own window controls
+    backgroundColor: '#f4efe6',
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
     },
   })
+  registerWindowControls(win)
   win.once('ready-to-show', () => {
     const wait = Math.max(0, SPLASH_MIN_MS - (Date.now() - shownAt))
     setTimeout(() => {

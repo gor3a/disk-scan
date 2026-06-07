@@ -51,6 +51,12 @@ declare global {
         install: () => Promise<void>
         openReleases: () => Promise<void>
       }
+      win: {
+        minimize: () => void
+        maximize: () => void
+        close: () => void
+        onMaximized: (cb: (max: boolean) => void) => () => void
+      }
     }
   }
 }
