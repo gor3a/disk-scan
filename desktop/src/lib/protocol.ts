@@ -22,18 +22,29 @@ export interface Disk {
   total: number
 }
 
+export interface TreeNode {
+  name: string
+  path: string
+  bytes: number
+  dir: boolean
+  children?: TreeNode[]
+}
+
 export type DscanEvent =
   | { event: 'disk'; disk: Disk }
   | { event: 'item'; item: ItemDTO }
   // numeric fields are optional: Go omits them when zero (omitempty)
   | { event: 'progress'; scanned?: number; phase?: string; bytes?: number; path?: string }
   | { event: 'scanDone'; reclaimable?: number }
+  | { event: 'tree'; path?: string; node: TreeNode | null }
   | { event: 'cleanResult'; freed?: number; trashed?: number; errors?: string[] }
   | { event: 'error'; message: string }
 
 export type Request =
   | { cmd: 'scan'; kind?: 'caches' | 'projects'; root?: string; system?: boolean; excludes?: string[] }
+  | { cmd: 'map'; root?: string; excludes?: string[] }
   | { cmd: 'clean'; ids: string[]; dryRun?: boolean; killLockers?: boolean }
+  | { cmd: 'trash'; path: string }
   | { cmd: 'cancel' }
 
 export function parseEvent(line: string): DscanEvent {
