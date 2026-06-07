@@ -13,12 +13,14 @@ export function Group({
   selection,
   onToggle,
   onToggleGroup,
+  onExclude,
 }: {
   tier: Tier
   items: ItemDTO[]
   selection: Set<string>
   onToggle: (id: string) => void
   onToggleGroup: (tier: Tier) => void
+  onExclude: (item: ItemDTO) => void
 }) {
   const rows = sortItems(
     items.filter((i) => i.tier === tier),
@@ -67,7 +69,13 @@ export function Group({
       {open && (
         <div className="px-2 pb-2">
           {rows.map((i) => (
-            <ItemRow key={i.id} item={i} checked={selection.has(i.id)} onToggle={onToggle} />
+            <ItemRow
+              key={i.id}
+              item={i}
+              checked={selection.has(i.id)}
+              onToggle={onToggle}
+              onExclude={onExclude}
+            />
           ))}
         </div>
       )}

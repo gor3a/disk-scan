@@ -11,6 +11,7 @@ export function ProjectsView({
   nowSecs,
   onToggle,
   onChangeFolder,
+  onExclude,
 }: {
   items: ItemDTO[]
   selection: Set<string>
@@ -18,6 +19,7 @@ export function ProjectsView({
   nowSecs: number
   onToggle: (id: string) => void
   onChangeFolder: () => void
+  onExclude: (item: ItemDTO) => void
 }) {
   const [sort, setSort] = useState<SortBy>('size')
   const groups = new Map<string, ItemDTO[]>()
@@ -66,6 +68,7 @@ export function ProjectsView({
               checked={selection.has(i.id)}
               nowSecs={nowSecs}
               onToggle={onToggle}
+              onExclude={onExclude}
             />
           ))}
         </section>

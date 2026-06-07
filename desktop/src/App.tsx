@@ -3,6 +3,7 @@ import { reduce, initialState, activeTab, type Tab, type Settings, type CleanRes
 import { toggle, toggleGroup, selectedIds, selectedTotal, defaultSelection } from './lib/selection'
 import { staleSelection } from './lib/projects'
 import { resolveTheme } from './lib/theme'
+import { isExcluded, excludeTargetFor } from './lib/exclude'
 import { humanBytes } from './lib/format'
 import { HeroBar } from './components/HeroBar'
 import { Group } from './components/Group'
@@ -15,7 +16,7 @@ import { Menu } from './components/Menu'
 import { AboutModal } from './components/AboutModal'
 import { UninstallModal } from './components/UninstallModal'
 import { SettingsModal } from './components/SettingsModal'
-import type { DscanEvent, Request, Tier } from './lib/protocol'
+import type { DscanEvent, Request, Tier, ItemDTO } from './lib/protocol'
 
 const KOFI = 'https://ko-fi.com/gor3a'
 const CONTACT = 'https://minasameh.com/contact'
@@ -82,16 +83,18 @@ export default function App() {
     return () => mql.removeEventListener('change', apply)
   }, [s.settings.theme])
 
+  const excludes = s.settings.excludes ?? []
+
   const scanCleanup = () => {
     touched.current.cleanup = false
     dispatch({ type: 'startScan', tab: 'cleanup' })
-    window.dscan.send({ cmd: 'scan', kind: 'caches' })
+    window.dscan.send({ cmd: 'scan', kind: 'caches', excludes })
   }
   const scanProjects = (root: string) => {
     touched.current.projects = false
     projectsRoot.current = root
     dispatch({ type: 'startScan', tab: 'projects' })
-    window.dscan.send({ cmd: 'scan', kind: 'projects', root: root === '~' ? '' : root })
+    window.dscan.send({ cmd: 'scan', kind: 'projects', root: root === '~' ? '' : root, excludes })
   }
 
   useEffect(() => {
@@ -110,6 +113,7 @@ export default function App() {
   }, [s.tab])
 
   const t = activeTab(s)
+  const items = t.items.filter((i) => !isExcluded(i.path, excludes))
   const setSelection = (sel: Set<string>) => dispatch({ type: 'setSelection', selection: sel })
   const onToggle = (id: string) => {
     touched.current[s.tab] = true
@@ -123,14 +127,14 @@ export default function App() {
   // Re-derive the default selection as items stream in / the threshold changes,
   // until the user manually toggles this tab.
   useEffect(() => {
-    if (touched.current[s.tab] || t.items.length === 0) return
+    if (touched.current[s.tab] || items.length === 0) return
     setSelection(
       s.tab === 'projects'
-        ? staleSelection(t.items, nowSecs(), s.settings.staleDays)
-        : defaultSelection(t.items),
+        ? staleSelection(items, nowSecs(), s.settings.staleDays)
+        : defaultSelection(items),
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.tab, t.items.length, s.settings.staleDays])
+  }, [s.tab, items.length, s.settings.staleDays])
 
   // Log each clean to history + update the running stats.
   useEffect(() => {
@@ -160,6 +164,11 @@ export default function App() {
       scanProjects(dir)
       window.dscan.setSettings({ lastProjectRoot: dir })
     }
+  }
+  const onExclude = (item: ItemDTO) => {
+    const next = [...excludes, excludeTargetFor(item)]
+    dispatch({ type: 'setSettings', settings: { ...s.settings, excludes: next } })
+    window.dscan.setSettings({ excludes: next })
   }
 
   const closeModal = () => dispatch({ type: 'openModal', modal: null })
@@ -194,7 +203,7 @@ export default function App() {
 
       <Tabs tab={s.tab} onTab={(tab: Tab) => dispatch({ type: 'setTab', tab })} />
 
-      <HeroBar reclaimable={selectedTotal(t.items, t.selection)} disk={t.disk} onClean={doClean} />
+      <HeroBar reclaimable={selectedTotal(items, t.selection)} disk={t.disk} onClean={doClean} />
       <ScanLine
         scanning={t.scanning}
         phase={t.phase}
@@ -210,21 +219,23 @@ export default function App() {
             <Group
               key={tier}
               tier={tier}
-              items={t.items}
+              items={items}
               selection={t.selection}
               onToggle={onToggle}
               onToggleGroup={onToggleGroup}
+              onExclude={onExclude}
             />
           ))}
         </div>
       ) : (
         <ProjectsView
-          items={t.items}
+          items={items}
           selection={t.selection}
           root={projectsRoot.current}
           nowSecs={nowSecs()}
           onToggle={onToggle}
           onChangeFolder={onChangeFolder}
+          onExclude={onExclude}
         />
       )}
 

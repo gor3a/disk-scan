@@ -6,10 +6,12 @@ export function ItemRow({
   item,
   checked,
   onToggle,
+  onExclude,
 }: {
   item: ItemDTO
   checked: boolean
   onToggle: (id: string) => void
+  onExclude: (item: ItemDTO) => void
 }) {
   const locked = !item.selectable
   return (
@@ -27,16 +29,28 @@ export function ItemRow({
         {item.label}
       </span>
       {item.path && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            window.dscan.reveal(item.path)
-          }}
-          title="Reveal in Finder"
-          className="ml-auto shrink-0 rounded-md px-1.5 text-ink-soft opacity-0 transition-opacity hover:text-ink group-hover:opacity-100"
-        >
-          ⤢
-        </button>
+        <span className="ml-auto flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onExclude(item)
+            }}
+            title="Exclude from scans"
+            className="rounded-md px-1.5 text-ink-soft hover:text-ink"
+          >
+            🚫
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              window.dscan.reveal(item.path)
+            }}
+            title="Reveal in Finder"
+            className="rounded-md px-1.5 text-ink-soft hover:text-ink"
+          >
+            ⤢
+          </button>
+        </span>
       )}
       <span
         className={`shrink-0 font-mono text-[12.5px] tnum text-ink-soft ${item.path ? '' : 'ml-auto'}`}

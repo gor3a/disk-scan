@@ -12,7 +12,7 @@ beforeEach(() => {
 describe('Store', () => {
   it('returns defaults when files are missing', () => {
     const s = new Store(dir)
-    expect(s.getSettings()).toEqual({ staleDays: 30, theme: 'system' })
+    expect(s.getSettings()).toEqual({ staleDays: 30, theme: 'system', excludes: [] })
     expect(s.getHistory()).toEqual([])
   })
   it('merges partial settings and persists', () => {
@@ -23,6 +23,7 @@ describe('Store', () => {
       staleDays: 90,
       lastProjectRoot: '/x',
       theme: 'system',
+      excludes: [],
     })
   })
   it('appends history entries', () => {

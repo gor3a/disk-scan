@@ -7,6 +7,7 @@ export interface Settings {
   staleDays: number
   lastProjectRoot?: string
   theme?: 'system' | 'light' | 'dark'
+  excludes?: string[]
 }
 export type Modal = 'about' | 'settings' | 'uninstall' | null
 
@@ -59,7 +60,7 @@ export function initialState(): State {
     cleanup: emptyTab(),
     projects: emptyTab(),
     pendingCleanIds: [],
-    settings: { staleDays: 30, theme: 'system' },
+    settings: { staleDays: 30, theme: 'system', excludes: [] },
     modal: null,
   }
 }

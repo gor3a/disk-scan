@@ -17,11 +17,13 @@ export function ProjectRow({
   checked,
   nowSecs,
   onToggle,
+  onExclude,
 }: {
   item: ItemDTO
   checked: boolean
   nowSecs: number
   onToggle: (id: string) => void
+  onExclude: (item: ItemDTO) => void
 }) {
   const { name, parent } = projectDisplay(item.path)
   const used = ago(item.modified ?? nowSecs, nowSecs)
@@ -42,16 +44,28 @@ export function ProjectRow({
       >
         {used.text}
       </span>
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          window.dscan.reveal(item.path)
-        }}
-        title="Reveal in Finder"
-        className="shrink-0 rounded-md px-1 text-ink-soft opacity-0 transition-opacity hover:text-ink group-hover:opacity-100"
-      >
-        ⤢
-      </button>
+      <span className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100">
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onExclude(item)
+          }}
+          title="Exclude from scans"
+          className="rounded-md px-1 text-ink-soft hover:text-ink"
+        >
+          🚫
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            window.dscan.reveal(item.path)
+          }}
+          title="Reveal in Finder"
+          className="rounded-md px-1 text-ink-soft hover:text-ink"
+        >
+          ⤢
+        </button>
+      </span>
       <span className="w-16 shrink-0 text-right font-mono text-[12.5px] tnum text-ink-soft">
         {humanBytes(item.bytes)}
       </span>
