@@ -111,6 +111,35 @@ func TestEndToEndScanAndClean(t *testing.T) {
 	}
 }
 
+func TestNotifyMessage(t *testing.T) {
+	if got := notifyMessage(0, false, 0); got != "" {
+		t.Errorf("below threshold should be empty, got %q", got)
+	}
+	if got := notifyMessage(600<<20, false, 0); !strings.Contains(got, "can be freed") {
+		t.Errorf("over threshold should mention reclaimable, got %q", got)
+	}
+	if got := notifyMessage(600<<20, true, 700<<20); !strings.Contains(got, "Freed") {
+		t.Errorf("cleaned should report freed, got %q", got)
+	}
+	if got := notifyMessage(600<<20, true, 0); got != "" {
+		t.Errorf("cleaned-but-freed-nothing should be empty, got %q", got)
+	}
+}
+
+func TestRunNotifyClean(t *testing.T) {
+	home := t.TempDir()
+	mkfile(t, filepath.Join(home, ".npm", "blob"), 4000) // SAFE cache
+	t.Setenv("HOME", home)
+	t.Setenv("DSCAN_NO_NOTIFY", "1")
+	t.Setenv("DSCAN_TRASH_DIR", t.TempDir())
+
+	runNotify(true)
+
+	if _, err := os.Stat(filepath.Join(home, ".npm")); !os.IsNotExist(err) {
+		t.Error("notify --clean should remove the SAFE cache")
+	}
+}
+
 func TestAutoSafeSelection(t *testing.T) {
 	items := []rules.Item{
 		{Label: "cache", Path: "/x/.npm", Tier: rules.Safe},                                         // included (Safe + Remove + path)

@@ -11,6 +11,8 @@ import (
 
 	"github.com/gor3a/disk-scan/internal/clean"
 	"github.com/gor3a/disk-scan/internal/engine"
+	"github.com/gor3a/disk-scan/internal/notify"
+	"github.com/gor3a/disk-scan/internal/rules"
 	"github.com/gor3a/disk-scan/internal/serve"
 )
 
@@ -28,6 +30,50 @@ func isServeMode(args []string) bool {
 	return len(args) > 1 && args[1] == "serve"
 }
 
+const notifyThreshold = 500 << 20 // 500 MiB — below this, don't nag
+
+func isNotifyMode(args []string) bool { return len(args) > 1 && args[1] == "notify" }
+
+func hasFlag(args []string, name string) bool {
+	for _, a := range args {
+		if a == name {
+			return true
+		}
+	}
+	return false
+}
+
+// runNotify scans caches, optionally cleans the SAFE selection, and posts a
+// desktop notification. Used by the scheduled background job (`dscan notify`).
+func runNotify(autoClean bool) {
+	home, _ := os.UserHomeDir()
+	items := engine.ScanAll(runtime.GOOS, home, false, nil, nil, nil)
+	var reclaimable int64
+	for _, it := range items {
+		if it.Tier == rules.Safe && it.Path != "" && it.EffectiveMethod() == rules.Remove {
+			reclaimable += it.Bytes
+		}
+	}
+	var freed int64
+	if autoClean {
+		freed = clean.Run(engine.AutoSafeSelection(items), clean.Options{}).FreedBytes
+	}
+	notify.Notify("dscan", notifyMessage(reclaimable, autoClean, freed))
+}
+
+func notifyMessage(reclaimable int64, cleaned bool, freed int64) string {
+	if cleaned {
+		if freed <= 0 {
+			return ""
+		}
+		return "Freed " + humized(freed) + "."
+	}
+	if reclaimable < notifyThreshold {
+		return ""
+	}
+	return humized(reclaimable) + " can be freed."
+}
+
 func main() {
 	if isServeMode(os.Args) {
 		home, _ := os.UserHomeDir()
@@ -35,6 +81,11 @@ func main() {
 			fmt.Fprintln(os.Stderr, "serve error:", err)
 			os.Exit(1)
 		}
+		return
+	}
+
+	if isNotifyMode(os.Args) {
+		runNotify(hasFlag(os.Args, "--clean"))
 		return
 	}
 
