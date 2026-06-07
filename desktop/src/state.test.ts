@@ -34,6 +34,15 @@ describe('state reducer', () => {
     expect(s.cleanup.items).toHaveLength(0)
   })
 
+  it('stores settings and opens/closes modals', () => {
+    let s = reduce(initialState(), { type: 'setSettings', settings: { staleDays: 90 } })
+    expect(s.settings.staleDays).toBe(90)
+    s = reduce(s, { type: 'openModal', modal: 'about' })
+    expect(s.modal).toBe('about')
+    s = reduce(s, { type: 'openModal', modal: null })
+    expect(s.modal).toBeNull()
+  })
+
   it('mid-scan clean removes cleaned ids and keeps results visible', () => {
     let s = reduce(initialState(), { type: 'startScan', tab: 'cleanup' })
     s = reduce(s, { type: 'event', event: { event: 'item', item: item('a') } })

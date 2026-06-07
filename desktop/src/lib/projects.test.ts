@@ -27,6 +27,13 @@ describe('staleSelection', () => {
     expect(sel.has('edge')).toBe(true)
     expect(sel.has('recent')).toBe(false)
   })
+
+  it('uses the given staleDays threshold', () => {
+    const now = 1_700_000_000
+    const items = [proj('a', 45, now), proj('b', 10, now)]
+    expect([...staleSelection(items, now, 30)]).toEqual(['a'])
+    expect([...staleSelection(items, now, 90)]).toEqual([])
+  })
 })
 
 describe('projectDisplay', () => {

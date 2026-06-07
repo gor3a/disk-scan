@@ -3,6 +3,12 @@ import type { Selection } from './lib/selection'
 
 export type Tab = 'cleanup' | 'projects'
 
+export interface Settings {
+  staleDays: number
+  lastProjectRoot?: string
+}
+export type Modal = 'about' | 'settings' | 'uninstall' | null
+
 export interface CleanResult {
   freed: number
   trashed: number
@@ -28,6 +34,8 @@ export interface State {
   projects: TabState
   pendingCleanIds: string[]
   result?: CleanResult
+  settings: Settings
+  modal: Modal
 }
 
 export type Action =
@@ -36,6 +44,8 @@ export type Action =
   | { type: 'startClean'; ids: string[] }
   | { type: 'event'; event: DscanEvent }
   | { type: 'setSelection'; selection: Selection }
+  | { type: 'setSettings'; settings: Settings }
+  | { type: 'openModal'; modal: Modal }
 
 function emptyTab(): TabState {
   return { scanning: false, scanned: 0, bytes: 0, items: [], selection: new Set(), reclaimable: 0 }
@@ -48,6 +58,8 @@ export function initialState(): State {
     cleanup: emptyTab(),
     projects: emptyTab(),
     pendingCleanIds: [],
+    settings: { staleDays: 30 },
+    modal: null,
   }
 }
 
@@ -73,6 +85,10 @@ export function reduce(s: State, a: Action): State {
       return { ...s, pendingCleanIds: a.ids }
     case 'setSelection':
       return setTabState(s, s.tab, { ...activeTab(s), selection: a.selection })
+    case 'setSettings':
+      return { ...s, settings: a.settings }
+    case 'openModal':
+      return { ...s, modal: a.modal }
     case 'event':
       return applyEvent(s, a.event)
   }
