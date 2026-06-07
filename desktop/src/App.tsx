@@ -17,7 +17,7 @@ import { SettingsModal } from './components/SettingsModal'
 import type { DscanEvent, Request, Tier } from './lib/protocol'
 
 const KOFI = 'https://ko-fi.com/gor3a'
-const CONTACT = 'https://minasameh.com/contact-us'
+const CONTACT = 'https://minasameh.com/contact'
 
 declare global {
   interface Window {
