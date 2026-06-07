@@ -17,6 +17,7 @@ export function Tabs({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
     <div className="flex gap-1 px-5 pt-3">
       {item('cleanup', 'Clean up')}
       {item('projects', 'Projects')}
+      {item('map', 'Map')}
     </div>
   )
 }
