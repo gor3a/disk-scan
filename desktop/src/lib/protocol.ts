@@ -32,7 +32,7 @@ export type DscanEvent =
   | { event: 'error'; message: string }
 
 export type Request =
-  | { cmd: 'scan'; kind?: 'caches' | 'projects'; root?: string; system?: boolean }
+  | { cmd: 'scan'; kind?: 'caches' | 'projects'; root?: string; system?: boolean; excludes?: string[] }
   | { cmd: 'clean'; ids: string[]; dryRun?: boolean; killLockers?: boolean }
   | { cmd: 'cancel' }
 
