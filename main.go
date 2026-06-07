@@ -21,7 +21,7 @@ var (
 	flagDryRun  = flag.Bool("dry-run", false, "preview actions without deleting")
 	flagYes     = flag.Bool("yes", false, "non-interactive: clean all SAFE items (caches/build) without the TUI; skips REVIEW/KEEP and tool-commands")
 	flagVersion = flag.Bool("version", false, "print version and exit")
-	version     = "0.5.0"
+	version     = "0.5.1"
 )
 
 // isServeMode reports whether dscan was invoked as `dscan serve` (the headless

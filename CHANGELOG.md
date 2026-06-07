@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-06-07
+
+### Changed
+
+- **Custom title bar** — replaced the native window chrome with an in-app title
+  bar carrying its own minimize / maximize / close controls (drag to move,
+  double-click to maximize), consistent across macOS and Linux in light and dark.
+
 ## [0.5.0] - 2026-06-07
 
 ### Added
@@ -134,7 +142,8 @@ Initial release.
   required) for scripts/CI; `--system` to include system dirs; `--version`.
 - Cross-platform: macOS and Linux. Builds and tests run on both in CI.
 
-[Unreleased]: https://github.com/gor3a/disk-scan/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/gor3a/disk-scan/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/gor3a/disk-scan/releases/tag/v0.5.1
 [0.5.0]: https://github.com/gor3a/disk-scan/releases/tag/v0.5.0
 [0.4.0]: https://github.com/gor3a/disk-scan/releases/tag/v0.4.0
 [0.3.1]: https://github.com/gor3a/disk-scan/releases/tag/v0.3.1
