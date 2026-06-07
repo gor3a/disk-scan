@@ -6,6 +6,29 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-06
+
+### Added
+
+- **Top menu** — a logo header with a `⋯` dropdown: Contact us, Support (Ko-fi),
+  Settings, About, and **Uninstall**. Uninstall self-removes the app and its data
+  to the Trash (OS-aware; dev/package-managed installs show a notice instead).
+- **More project types** — the Projects tab now finds `.next`, `.nuxt`,
+  `.svelte-kit`, `.turbo`, `__pycache__`, `.gradle`, and (gated by a sibling
+  manifest) `target`/`dist`/`build`/`out`, grouped by kind.
+- **Settings** — adjustable staleness threshold and a remembered project folder,
+  persisted across launches.
+- **Reclaim history & stats** — every clean is logged; About shows your all-time
+  reclaimed total.
+- **Reveal in Finder** — a per-row action to inspect an item before cleaning.
+- **Safer project cleaning** — processes holding a project folder are signalled to
+  stop (`lsof`-based, best-effort) before its artifacts are removed.
+
+### Fixed
+
+- Auto-selection now re-derives as items stream in and when the staleness
+  threshold changes, until you manually toggle.
+
 ## [0.2.1] - 2026-06-06
 
 ### Added
