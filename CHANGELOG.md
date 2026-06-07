@@ -6,6 +6,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-06-07
+
+### Added
+
+- **Intel macOS build** — releases now include both Apple Silicon
+  (`-arm64.dmg`) and Intel (`-x64.dmg`) builds; each bundles a universal Go
+  sidecar.
+- **Sort** — cleanup lists show biggest-first; the Projects tab has a
+  Size / Oldest / Name sort control.
+
+### Fixed
+
+- The Projects tab's disk gauge now reflects real usage (the projects scan emits
+  a disk-usage event).
+
 ## [0.3.0] - 2026-06-06
 
 ### Added
@@ -90,7 +105,9 @@ Initial release.
   required) for scripts/CI; `--system` to include system dirs; `--version`.
 - Cross-platform: macOS and Linux. Builds and tests run on both in CI.
 
-[Unreleased]: https://github.com/gor3a/disk-scan/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/gor3a/disk-scan/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/gor3a/disk-scan/releases/tag/v0.3.1
+[0.3.0]: https://github.com/gor3a/disk-scan/releases/tag/v0.3.0
 [0.2.1]: https://github.com/gor3a/disk-scan/releases/tag/v0.2.1
 [0.2.0]: https://github.com/gor3a/disk-scan/releases/tag/v0.2.0
 [0.1.0]: https://github.com/gor3a/disk-scan/releases/tag/v0.1.0
