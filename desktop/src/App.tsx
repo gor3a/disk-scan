@@ -1,5 +1,5 @@
-import { useEffect, useReducer, useRef } from 'react'
-import { reduce, initialState, activeTab, type Tab } from './state'
+import { useEffect, useReducer, useRef, useState } from 'react'
+import { reduce, initialState, activeTab, type Tab, type Settings, type CleanResult } from './state'
 import { toggle, toggleGroup, selectedIds, selectedTotal, defaultSelection } from './lib/selection'
 import { staleSelection } from './lib/projects'
 import { humanBytes } from './lib/format'
@@ -9,7 +9,15 @@ import { Tabs } from './components/Tabs'
 import { ScanLine } from './components/ScanLine'
 import { ProjectsView } from './components/ProjectsView'
 import { SupportButton } from './components/SupportButton'
+import { TopBar } from './components/TopBar'
+import { Menu } from './components/Menu'
+import { AboutModal } from './components/AboutModal'
+import { UninstallModal } from './components/UninstallModal'
+import { SettingsModal } from './components/SettingsModal'
 import type { DscanEvent, Request, Tier } from './lib/protocol'
+
+const KOFI = 'https://ko-fi.com/gor3a'
+const CONTACT = 'https://minasameh.com/contact-us'
 
 declare global {
   interface Window {
@@ -18,6 +26,15 @@ declare global {
       pickFolder: () => Promise<string | null>
       openExternal: (url: string) => void
       onEvent: (cb: (e: DscanEvent) => void) => () => void
+      appInfo: () => Promise<{ version: string; platform: string; isPackaged: boolean }>
+      reveal: (p: string) => void
+      uninstall: () => Promise<{ ok: boolean; reason?: 'dev' | 'managed' }>
+      getSettings: () => Promise<Settings>
+      setSettings: (p: Partial<Settings>) => Promise<Settings>
+      getHistory: () => Promise<
+        Array<{ at: number; freed: number; trashed: number; items: number; tab: string }>
+      >
+      addHistory: (e: { at: number; freed: number; trashed: number; items: number; tab: string }) => void
     }
   }
 }
@@ -29,8 +46,26 @@ export default function App() {
   const projectsRoot = useRef('~')
   const startedCleanup = useRef(false)
   const startedProjects = useRef(false)
+  const pendingCount = useRef(0)
+  const lastResult = useRef<CleanResult | undefined>(undefined)
+
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [version, setVersion] = useState('')
+  const [stats, setStats] = useState({ total: 0, cleans: 0 })
 
   useEffect(() => window.dscan.onEvent((e) => dispatch({ type: 'event', event: e })), [])
+
+  // Load persisted version/settings/history once.
+  useEffect(() => {
+    window.dscan.appInfo().then((i) => setVersion(i.version))
+    window.dscan.getSettings().then((set) => {
+      dispatch({ type: 'setSettings', settings: set })
+      if (set.lastProjectRoot) projectsRoot.current = set.lastProjectRoot
+    })
+    window.dscan
+      .getHistory()
+      .then((h) => setStats({ total: h.reduce((n, e) => n + e.freed + e.trashed, 0), cleans: h.length }))
+  }, [])
 
   const scanCleanup = () => {
     dispatch({ type: 'startScan', tab: 'cleanup' })
@@ -42,7 +77,6 @@ export default function App() {
     window.dscan.send({ cmd: 'scan', kind: 'projects', root: root === '~' ? '' : root })
   }
 
-  // Auto-scan caches on launch.
   useEffect(() => {
     if (startedCleanup.current) return
     startedCleanup.current = true
@@ -50,11 +84,10 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Auto-scan projects the first time that tab is opened.
   useEffect(() => {
     if (s.tab === 'projects' && !startedProjects.current) {
       startedProjects.current = true
-      scanProjects('~')
+      scanProjects(projectsRoot.current)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.tab])
@@ -64,25 +97,76 @@ export default function App() {
   const onToggle = (id: string) => setSelection(toggle(t.selection, id, t.items))
   const onToggleGroup = (tier: Tier) => setSelection(toggleGroup(t.selection, t.items, tier))
 
-  // Seed the per-tab default selection as items stream in (while nothing chosen yet).
   useEffect(() => {
     if (t.items.length === 0 || t.selection.size > 0) return
-    setSelection(s.tab === 'projects' ? staleSelection(t.items, nowSecs()) : defaultSelection(t.items))
+    setSelection(
+      s.tab === 'projects'
+        ? staleSelection(t.items, nowSecs(), s.settings.staleDays)
+        : defaultSelection(t.items),
+    )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.tab, t.items.length])
 
+  // Log each clean to history + update the running stats.
+  useEffect(() => {
+    if (!s.result || s.result === lastResult.current) return
+    lastResult.current = s.result
+    const entry = {
+      at: nowSecs(),
+      freed: s.result.freed,
+      trashed: s.result.trashed,
+      items: pendingCount.current,
+      tab: s.tab,
+    }
+    window.dscan.addHistory(entry)
+    setStats((p) => ({ total: p.total + entry.freed + entry.trashed, cleans: p.cleans + 1 }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.result])
+
   const doClean = () => {
     const ids = selectedIds(t.selection)
+    pendingCount.current = ids.length
     dispatch({ type: 'startClean', ids })
-    window.dscan.send({ cmd: 'clean', ids })
+    window.dscan.send({ cmd: 'clean', ids, killLockers: s.tab === 'projects' })
   }
   const onChangeFolder = async () => {
     const dir = await window.dscan.pickFolder()
-    if (dir) scanProjects(dir)
+    if (dir) {
+      scanProjects(dir)
+      window.dscan.setSettings({ lastProjectRoot: dir })
+    }
   }
+
+  const closeModal = () => dispatch({ type: 'openModal', modal: null })
 
   return (
     <div className="flex h-screen flex-col text-ink">
+      <TopBar onToggleMenu={() => setMenuOpen((o) => !o)} />
+      {menuOpen && (
+        <Menu
+          onContact={() => {
+            setMenuOpen(false)
+            window.dscan.openExternal(CONTACT)
+          }}
+          onSupport={() => {
+            setMenuOpen(false)
+            window.dscan.openExternal(KOFI)
+          }}
+          onSettings={() => {
+            setMenuOpen(false)
+            dispatch({ type: 'openModal', modal: 'settings' })
+          }}
+          onAbout={() => {
+            setMenuOpen(false)
+            dispatch({ type: 'openModal', modal: 'about' })
+          }}
+          onUninstall={() => {
+            setMenuOpen(false)
+            dispatch({ type: 'openModal', modal: 'uninstall' })
+          }}
+        />
+      )}
+
       <Tabs tab={s.tab} onTab={(tab: Tab) => dispatch({ type: 'setTab', tab })} />
 
       <HeroBar reclaimable={selectedTotal(t.items, t.selection)} disk={t.disk} onClean={doClean} />
@@ -127,7 +211,7 @@ export default function App() {
           </span>
           <span className="text-ink-soft">— enjoying dscan?</span>
           <span className="ml-auto">
-            <SupportButton onClick={() => window.dscan.openExternal('https://ko-fi.com/gor3a')} />
+            <SupportButton onClick={() => window.dscan.openExternal(KOFI)} />
           </span>
         </div>
       )}
@@ -135,9 +219,31 @@ export default function App() {
       <footer className="flex items-center border-t border-line bg-surface px-5 py-1.5 text-[11.5px] text-ink-soft">
         <span className="font-display text-[13px] text-ink">dscan</span>
         <span className="ml-auto">
-          <SupportButton onClick={() => window.dscan.openExternal('https://ko-fi.com/gor3a')} />
+          <SupportButton onClick={() => window.dscan.openExternal(KOFI)} />
         </span>
       </footer>
+
+      {s.modal === 'about' && (
+        <AboutModal
+          version={version}
+          reclaimedAllTime={stats.total}
+          cleans={stats.cleans}
+          onClose={closeModal}
+          onContact={() => window.dscan.openExternal(CONTACT)}
+          onSupport={() => window.dscan.openExternal(KOFI)}
+        />
+      )}
+      {s.modal === 'settings' && (
+        <SettingsModal
+          settings={s.settings}
+          onChange={(set: Settings) => {
+            dispatch({ type: 'setSettings', settings: set })
+            window.dscan.setSettings(set)
+          }}
+          onClose={closeModal}
+        />
+      )}
+      {s.modal === 'uninstall' && <UninstallModal onClose={closeModal} />}
     </div>
   )
 }

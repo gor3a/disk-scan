@@ -33,7 +33,7 @@ export type DscanEvent =
 
 export type Request =
   | { cmd: 'scan'; kind?: 'caches' | 'projects'; root?: string; system?: boolean }
-  | { cmd: 'clean'; ids: string[]; dryRun?: boolean }
+  | { cmd: 'clean'; ids: string[]; dryRun?: boolean; killLockers?: boolean }
   | { cmd: 'cancel' }
 
 export function parseEvent(line: string): DscanEvent {
