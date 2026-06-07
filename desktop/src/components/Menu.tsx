@@ -1,15 +1,17 @@
 import { type ReactNode } from 'react'
-import { Mail, Coffee, Settings, Info, Trash2 } from 'lucide-react'
+import { Mail, Coffee, Settings, Info, Trash2, RefreshCw } from 'lucide-react'
 
 export function Menu({
   onContact,
   onSupport,
+  onCheckUpdates,
   onAbout,
   onSettings,
   onUninstall,
 }: {
   onContact: () => void
   onSupport: () => void
+  onCheckUpdates: () => void
   onAbout: () => void
   onSettings: () => void
   onUninstall: () => void
@@ -31,6 +33,7 @@ export function Menu({
       {item(<Mail {...ic} />, 'Contact us', onContact)}
       {item(<Coffee {...ic} />, 'Support', onSupport)}
       {item(<Settings {...ic} />, 'Settings', onSettings)}
+      {item(<RefreshCw {...ic} />, 'Check for updates', onCheckUpdates)}
       {item(<Info {...ic} />, 'About', onAbout)}
       <div className="border-t border-line" />
       {item(<Trash2 {...ic} />, 'Uninstall dscan', onUninstall, true)}

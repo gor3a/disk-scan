@@ -14,6 +14,16 @@ contextBridge.exposeInMainWorld('dscan', {
   addHistory: (entry: unknown) => ipcRenderer.invoke('dscan:addHistory', entry),
   setSchedule: (opts: { cadence: 'off' | 'daily' | 'weekly'; autoClean: boolean }) =>
     ipcRenderer.invoke('dscan:setSchedule', opts),
+  update: {
+    onStatus: (cb: (s: unknown) => void) => {
+      const h = (_: unknown, s: unknown) => cb(s)
+      ipcRenderer.on('dscan:update', h)
+      return () => ipcRenderer.removeListener('dscan:update', h)
+    },
+    check: () => ipcRenderer.invoke('dscan:update:check'),
+    install: () => ipcRenderer.invoke('dscan:update:install'),
+    openReleases: () => ipcRenderer.invoke('dscan:update:openReleases'),
+  },
   onEvent: (cb: (e: DscanEvent) => void) => {
     const handler = (_: unknown, e: DscanEvent) => cb(e)
     ipcRenderer.on('dscan:event', handler)

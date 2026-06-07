@@ -9,6 +9,7 @@ describe('Menu', () => {
     const onUninstall = vi.fn()
     const onContact = vi.fn()
     const onSupport = vi.fn()
+    const onCheckUpdates = vi.fn()
     render(
       <Menu
         onAbout={onAbout}
@@ -16,6 +17,7 @@ describe('Menu', () => {
         onUninstall={onUninstall}
         onContact={onContact}
         onSupport={onSupport}
+        onCheckUpdates={onCheckUpdates}
       />,
     )
     fireEvent.click(screen.getByText(/contact us/i))

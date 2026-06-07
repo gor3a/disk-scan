@@ -11,7 +11,9 @@ import { Tabs } from './components/Tabs'
 import { ScanLine } from './components/ScanLine'
 import { ProjectsView } from './components/ProjectsView'
 import { MapView } from './components/MapView'
+import { UpdateBanner } from './components/UpdateBanner'
 import { Modal } from './components/Modal'
+import type { UpdateStatus } from './lib/update'
 import { SupportButton } from './components/SupportButton'
 import { TopBar } from './components/TopBar'
 import { Menu } from './components/Menu'
@@ -43,6 +45,12 @@ declare global {
         cadence: 'off' | 'daily' | 'weekly'
         autoClean: boolean
       }) => Promise<{ ok: boolean; error?: string }>
+      update: {
+        onStatus: (cb: (s: UpdateStatus) => void) => () => void
+        check: () => Promise<void>
+        install: () => Promise<void>
+        openReleases: () => Promise<void>
+      }
     }
   }
 }
@@ -64,13 +72,18 @@ export default function App() {
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [version, setVersion] = useState('')
+  const [platform, setPlatform] = useState('')
+  const [update, setUpdate] = useState<UpdateStatus>({ state: 'none' })
   const [stats, setStats] = useState({ total: 0, cleans: 0 })
 
   useEffect(() => window.dscan.onEvent((e) => dispatch({ type: 'event', event: e })), [])
 
   // Load persisted version/settings/history once.
   useEffect(() => {
-    window.dscan.appInfo().then((i) => setVersion(i.version))
+    window.dscan.appInfo().then((i) => {
+      setVersion(i.version)
+      setPlatform(i.platform)
+    })
     window.dscan.getSettings().then((set) => {
       dispatch({ type: 'setSettings', settings: set })
       if (set.lastProjectRoot) projectsRoot.current = set.lastProjectRoot
@@ -91,6 +104,9 @@ export default function App() {
     mql.addEventListener('change', apply)
     return () => mql.removeEventListener('change', apply)
   }, [s.settings.theme])
+
+  // Subscribe to update status from the main process.
+  useEffect(() => window.dscan.update.onStatus(setUpdate), [])
 
   // (Re)apply the OS scheduled-scan job when the schedule settings change.
   useEffect(() => {
@@ -235,6 +251,10 @@ export default function App() {
             setMenuOpen(false)
             window.dscan.openExternal(KOFI)
           }}
+          onCheckUpdates={() => {
+            setMenuOpen(false)
+            window.dscan.update.check()
+          }}
           onSettings={() => {
             setMenuOpen(false)
             dispatch({ type: 'openModal', modal: 'settings' })
@@ -315,6 +335,13 @@ export default function App() {
           </span>
         </div>
       )}
+
+      <UpdateBanner
+        status={update}
+        platform={platform}
+        onInstall={() => window.dscan.update.install()}
+        onDownload={() => window.dscan.update.openReleases()}
+      />
 
       <footer className="flex items-center border-t border-line bg-surface px-5 py-1.5 text-[11.5px] text-ink-soft">
         <span className="font-display text-[13px] text-ink">dscan</span>
