@@ -86,6 +86,9 @@ func (s *server) runScanProjects(root string, cancel <-chan struct{}) {
 	if root == "" {
 		root = s.home
 	}
+	if d, err := engine.DiskUsage(root); err == nil {
+		s.emit(Event{Event: "disk", Disk: &diskInfo{Used: d.Used, Free: d.Free, Total: d.Total}})
+	}
 	n := 0
 	var bytes int64
 	engine.FindProjects(root, func(p engine.Project) {

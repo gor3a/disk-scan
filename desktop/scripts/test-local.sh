@@ -62,6 +62,14 @@ seed_demo() {
     echo code >"$DEMO/dev/$name/src/index.js"
     set_old "$DEMO/dev/$name/src" "$age" # the project's "last used" age
   done
+
+  # Other artifact kinds so the Projects tab shows grouping.
+  sparse "$DEMO/dev/web-app/.next/blob" 320 # Next.js
+  sparse "$DEMO/dev/rust-cli/target/blob" 540
+  echo '[package]' >"$DEMO/dev/rust-cli/Cargo.toml" # gates the Rust target match
+  mkdir -p "$DEMO/dev/rust-cli/src" && set_old "$DEMO/dev/rust-cli/src" 200
+  sparse "$DEMO/dev/py-tool/__pycache__/blob" 90 # Python
+  mkdir -p "$DEMO/dev/py-tool/app" && set_old "$DEMO/dev/py-tool/app" 120
   echo "seeded demo home → $DEMO"
 }
 
