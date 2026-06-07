@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-07
+
+### Added
+
+- **Dark mode** — a **System / Light / Dark** theme (default follows the OS),
+  chosen in Settings. Neutral-slate dark palette that recolors the whole app and
+  tracks OS changes live.
+
 ## [0.3.1] - 2026-06-07
 
 ### Added
@@ -105,7 +113,8 @@ Initial release.
   required) for scripts/CI; `--system` to include system dirs; `--version`.
 - Cross-platform: macOS and Linux. Builds and tests run on both in CI.
 
-[Unreleased]: https://github.com/gor3a/disk-scan/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/gor3a/disk-scan/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/gor3a/disk-scan/releases/tag/v0.4.0
 [0.3.1]: https://github.com/gor3a/disk-scan/releases/tag/v0.3.1
 [0.3.0]: https://github.com/gor3a/disk-scan/releases/tag/v0.3.0
 [0.2.1]: https://github.com/gor3a/disk-scan/releases/tag/v0.2.1
