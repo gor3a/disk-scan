@@ -4,11 +4,14 @@ import (
 	"bufio"
 	"encoding/json"
 	"io"
+	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/gor3a/disk-scan/internal/clean"
 	"github.com/gor3a/disk-scan/internal/engine"
 	"github.com/gor3a/disk-scan/internal/rules"
+	"github.com/gor3a/disk-scan/internal/scan"
 )
 
 // Run reads newline-delimited JSON requests from in and writes JSON events to
@@ -38,8 +41,12 @@ func Run(in io.Reader, out io.Writer, goos, home string) error {
 		switch req.Cmd {
 		case "scan":
 			s.startScan(req)
+		case "map":
+			s.startMap(req)
 		case "clean":
 			s.startClean(req.IDs, req.DryRun, req.KillLockers)
+		case "trash":
+			s.trashPath(req.Path)
 		case "cancel":
 			s.cancelScan()
 		}
@@ -80,6 +87,52 @@ func (s *server) startScan(req Request) {
 			s.runScan(req.System, cancel, req.Excludes)
 		}
 	}()
+}
+
+func (s *server) startMap(req Request) {
+	s.cancelScan()
+	cancel := make(chan struct{})
+	s.mu.Lock()
+	s.cancel = cancel
+	s.mu.Unlock()
+
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		root := req.Root
+		if root == "" {
+			root = s.home
+		}
+		node := engine.BuildSizeTree(root, req.Excludes, func(scanned int, bytes int64, path string) {
+			s.emit(Event{Event: "progress", Phase: "map", Scanned: scanned, Bytes: bytes, Path: path})
+		}, cancel)
+		aborted := false
+		select {
+		case <-cancel:
+			aborted = true
+		default:
+		}
+		if !aborted {
+			s.emit(Event{Event: "tree", Path: root, Node: node})
+		}
+	}()
+}
+
+func (s *server) trashPath(path string) {
+	if path == "" || !filepath.IsAbs(path) {
+		s.emit(Event{Event: "cleanResult", Errors: []string{"invalid path"}})
+		return
+	}
+	if _, err := os.Stat(path); err != nil {
+		s.emit(Event{Event: "cleanResult", Errors: []string{err.Error()}})
+		return
+	}
+	size, _ := scan.DirSizeCancel(path, nil)
+	if err := clean.Trash(path); err != nil {
+		s.emit(Event{Event: "cleanResult", Errors: []string{err.Error()}})
+		return
+	}
+	s.emit(Event{Event: "cleanResult", Trashed: size})
 }
 
 func (s *server) runScanProjects(root string, cancel <-chan struct{}, excludes []string) {

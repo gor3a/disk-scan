@@ -158,6 +158,48 @@ func TestServeCleanKillLockersRunsCleanly(t *testing.T) {
 	}
 }
 
+func TestServeMapEmitsTree(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "f"), make([]byte, 4096), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out strings.Builder
+	in := strings.NewReader(`{"cmd":"map","root":"` + root + `"}` + "\n")
+	if err := Run(in, &out, "darwin", root); err != nil {
+		t.Fatal(err)
+	}
+	var sawTree bool
+	for _, e := range decodeEvents(t, out.String()) {
+		if e.Event == "tree" {
+			sawTree = true
+			if e.Node == nil || e.Node.Bytes < 4096 {
+				t.Errorf("tree node bytes = %v", e.Node)
+			}
+		}
+	}
+	if !sawTree {
+		t.Error("expected a tree event")
+	}
+}
+
+func TestServeTrashMovesPath(t *testing.T) {
+	root := t.TempDir()
+	target := filepath.Join(root, "victim")
+	if err := os.WriteFile(target, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	trashDir := t.TempDir()
+	t.Setenv("DSCAN_TRASH_DIR", trashDir)
+	var out strings.Builder
+	in := strings.NewReader(`{"cmd":"trash","path":"` + target + `"}` + "\n")
+	if err := Run(in, &out, "darwin", root); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(target); !os.IsNotExist(err) {
+		t.Error("trash should remove the source")
+	}
+}
+
 func TestServeScanProjectsExcludes(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "skip", "node_modules", "x"), 0o755); err != nil {

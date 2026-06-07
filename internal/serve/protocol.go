@@ -27,10 +27,11 @@ type ItemDTO struct {
 
 // Request is a command from the GUI (main → sidecar stdin).
 type Request struct {
-	Cmd         string   `json:"cmd"`         // scan|clean|cancel
+	Cmd         string   `json:"cmd"`         // scan|map|clean|trash|cancel
 	Kind        string   `json:"kind"`        // scan: "caches" (default) | "projects"
-	Root        string   `json:"root"`        // scan projects: folder to search
-	Excludes    []string `json:"excludes"`    // scan: skip these path prefixes
+	Root        string   `json:"root"`        // scan/map: folder to search
+	Path        string   `json:"path"`        // trash: path to move to Trash
+	Excludes    []string `json:"excludes"`    // scan/map: skip these path prefixes
 	System      bool     `json:"system"`      // scan: include system dirs
 	IDs         []string `json:"ids"`         // clean: which items
 	DryRun      bool     `json:"dryRun"`      // clean: preview only
@@ -40,18 +41,19 @@ type Request struct {
 // Event is an outbound message (sidecar → main stdout). Only the fields
 // relevant to the event are populated; the rest are omitted.
 type Event struct {
-	Event       string    `json:"event"`
-	Disk        *diskInfo `json:"disk,omitempty"`
-	Item        *ItemDTO  `json:"item,omitempty"`
-	Scanned     int       `json:"scanned,omitempty"`
-	Phase       string    `json:"phase,omitempty"`
-	Bytes       int64     `json:"bytes,omitempty"`
-	Path        string    `json:"path,omitempty"`
-	Reclaimable int64     `json:"reclaimable,omitempty"`
-	Freed       int64     `json:"freed,omitempty"`
-	Trashed     int64     `json:"trashed,omitempty"`
-	Errors      []string  `json:"errors,omitempty"`
-	Message     string    `json:"message,omitempty"`
+	Event       string       `json:"event"`
+	Disk        *diskInfo    `json:"disk,omitempty"`
+	Item        *ItemDTO     `json:"item,omitempty"`
+	Scanned     int          `json:"scanned,omitempty"`
+	Phase       string       `json:"phase,omitempty"`
+	Bytes       int64        `json:"bytes,omitempty"`
+	Path        string       `json:"path,omitempty"`
+	Reclaimable int64        `json:"reclaimable,omitempty"`
+	Freed       int64        `json:"freed,omitempty"`
+	Trashed     int64        `json:"trashed,omitempty"`
+	Errors      []string     `json:"errors,omitempty"`
+	Message     string       `json:"message,omitempty"`
+	Node        *engine.Node `json:"node,omitempty"` // tree: disk-map root
 }
 
 type diskInfo struct {
