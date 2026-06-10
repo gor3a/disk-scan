@@ -131,7 +131,12 @@ ipcMain.handle('dscan:findNative', async (_e, name: string) => {
     const res = await fetch(url)
     const data = (await res.json()) as { results?: Array<{ trackName?: string; trackViewUrl?: string }> }
     const hit = data.results?.[0]
-    if (hit?.trackViewUrl && hit.trackName && matchesAppName(name, hit.trackName)) {
+    if (
+      hit?.trackViewUrl &&
+      hit.trackViewUrl.startsWith('https://') &&
+      hit.trackName &&
+      matchesAppName(name, hit.trackName)
+    ) {
       await shell.openExternal(hit.trackViewUrl)
       return
     }

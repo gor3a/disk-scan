@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Cpu, ExternalLink, Trash2, Search } from 'lucide-react'
 import type { AppDTO, Leftover } from '../lib/protocol'
 import { archBadge, sortApps, uninstallTotal } from '../lib/apps'
@@ -31,6 +31,9 @@ export function AppsView({
 }) {
   const [target, setTarget] = useState<AppDTO | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  // Which target we've already applied the default leftover selection for, so
+  // it fires once per modal open and never re-selects after a manual deselect.
+  const defaultedFor = useRef<string | null>(null)
 
   const sorted = sortApps(apps)
   const intelCount = apps.filter((a) => a.arch === 'intel').length
@@ -40,9 +43,13 @@ export function AppsView({
     setSelected(new Set())
     onRequestLeftovers(app.path)
   }
-  if (target && leftovers.length && selected.size === 0) {
-    setSelected(new Set(leftovers.map((l) => l.path)))
-  }
+  // Default-select all leftovers once they arrive for the open target.
+  useEffect(() => {
+    if (target && leftovers.length && defaultedFor.current !== target.path) {
+      defaultedFor.current = target.path
+      setSelected(new Set(leftovers.map((l) => l.path)))
+    }
+  }, [target, leftovers])
   const toggle = (p: string) =>
     setSelected((s) => {
       const n = new Set(s)
