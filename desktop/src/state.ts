@@ -1,7 +1,7 @@
-import type { DscanEvent, Disk, ItemDTO, TreeNode } from './lib/protocol'
+import type { DscanEvent, Disk, ItemDTO, TreeNode, AppDTO, Leftover } from './lib/protocol'
 import type { Selection } from './lib/selection'
 
-export type Tab = 'cleanup' | 'projects' | 'map'
+export type Tab = 'cleanup' | 'projects' | 'map' | 'apps'
 
 export interface Settings {
   staleDays: number
@@ -39,12 +39,20 @@ export interface MapState {
   tree: TreeNode | null
 }
 
+export interface AppsState {
+  scanning: boolean
+  hostAppleSilicon: boolean
+  apps: AppDTO[]
+  leftovers: Leftover[] // for the currently-open uninstall modal
+}
+
 export interface State {
   tab: Tab
   scanningTab: Tab | null
   cleanup: TabState
   projects: TabState
   map: MapState
+  apps: AppsState
   pendingCleanIds: string[]
   result?: CleanResult
   settings: Settings
@@ -68,6 +76,10 @@ function emptyMap(): MapState {
   return { scanning: false, scanned: 0, bytes: 0, tree: null }
 }
 
+function emptyApps(): AppsState {
+  return { scanning: false, hostAppleSilicon: false, apps: [], leftovers: [] }
+}
+
 export function initialState(): State {
   return {
     tab: 'cleanup',
@@ -75,6 +87,7 @@ export function initialState(): State {
     cleanup: emptyTab(),
     projects: emptyTab(),
     map: emptyMap(),
+    apps: emptyApps(),
     pendingCleanIds: [],
     settings: {
       staleDays: 30,
@@ -91,7 +104,7 @@ export function initialState(): State {
 // TabState (it uses the `map` slice); callers gate on `tab` and never render
 // TabState-driven UI on Map, so a cleanup placeholder is harmless here.
 export function activeTab(s: State): TabState {
-  return s.tab === 'map' ? s.cleanup : s[s.tab]
+  return s.tab === 'map' || s.tab === 'apps' ? s.cleanup : s[s.tab]
 }
 
 function setTabState(s: State, tab: Tab, t: TabState): State {
@@ -105,6 +118,13 @@ export function reduce(s: State, a: Action): State {
     case 'startScan':
       if (a.tab === 'map')
         return { ...s, map: { ...emptyMap(), scanning: true }, tab: 'map', scanningTab: 'map' }
+      if (a.tab === 'apps')
+        return {
+          ...s,
+          apps: { ...emptyApps(), hostAppleSilicon: s.apps.hostAppleSilicon, scanning: true },
+          tab: 'apps',
+          scanningTab: 'apps',
+        }
       return {
         ...setTabState(s, a.tab, { ...emptyTab(), scanning: true }),
         tab: a.tab,
@@ -128,6 +148,11 @@ function applyEvent(s: State, e: DscanEvent): State {
   if (e.event === 'cleanResult') {
     const result = { freed: e.freed ?? 0, trashed: e.trashed ?? 0, errors: e.errors ?? [] }
     if (s.tab === 'map') return { ...s, pendingCleanIds: [], result }
+    if (s.tab === 'apps') {
+      const cleaned = new Set(s.pendingCleanIds)
+      const apps = s.apps.apps.filter((a) => !cleaned.has(a.id))
+      return { ...s, apps: { ...s.apps, apps, leftovers: [] }, pendingCleanIds: [], result }
+    }
     const cleaned = new Set(s.pendingCleanIds)
     const t = activeTab(s)
     const items = t.items.filter((i) => !cleaned.has(i.id))
@@ -153,8 +178,23 @@ function applyEvent(s: State, e: DscanEvent): State {
     return s
   }
 
+  // Apps slice: host/app/leftovers route here, never to a TabState.
+  if (e.event === 'host') {
+    return { ...s, apps: { ...s.apps, hostAppleSilicon: e.host.arch === 'appleSilicon' } }
+  }
+  if (e.event === 'app') {
+    return { ...s, apps: { ...s.apps, apps: [...s.apps.apps, e.app] } }
+  }
+  if (e.event === 'leftovers') {
+    return { ...s, apps: { ...s.apps, leftovers: e.leftovers ?? [] } }
+  }
+  if (s.scanningTab === 'apps') {
+    if (e.event === 'scanDone') return { ...s, apps: { ...s.apps, scanning: false } }
+    return s // progress during apps scan: ignore (no per-file UI)
+  }
+
   const tab = s.scanningTab ?? s.tab
-  if (tab === 'map') return s
+  if (tab === 'map' || tab === 'apps') return s
   const t = s[tab]
   let nt: TabState
   switch (e.event) {

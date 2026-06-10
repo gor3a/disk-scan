@@ -54,3 +54,50 @@ describe('state reducer', () => {
     expect(s.result).toEqual({ freed: 10, trashed: 0, errors: [] })
   })
 })
+
+describe('apps tab', () => {
+  it('records host arch and accumulates app events', () => {
+    let s = initialState()
+    s = reduce(s, { type: 'startScan', tab: 'apps' })
+    s = reduce(s, { type: 'event', event: { event: 'host', host: { arch: 'appleSilicon' } } })
+    expect(s.apps.hostAppleSilicon).toBe(true)
+    s = reduce(s, {
+      type: 'event',
+      event: {
+        event: 'app',
+        app: { id: '/A.app', name: 'A', bundleId: 'com.a', path: '/A.app', bytes: 10, arch: 'intel' },
+      },
+    })
+    s = reduce(s, {
+      type: 'event',
+      event: {
+        event: 'app',
+        app: { id: '/B.app', name: 'B', bundleId: 'com.b', path: '/B.app', bytes: 20, arch: 'universal' },
+      },
+    })
+    expect(s.apps.apps.map((a) => a.name)).toEqual(['A', 'B'])
+    s = reduce(s, { type: 'event', event: { event: 'scanDone' } })
+    expect(s.apps.scanning).toBe(false)
+  })
+
+  it('stores leftovers keyed for the uninstall modal', () => {
+    let s = initialState()
+    s = reduce(s, { type: 'startScan', tab: 'apps' })
+    s = reduce(s, {
+      type: 'event',
+      event: { event: 'leftovers', path: '/A.app', leftovers: [{ path: '/l', label: 'l', bytes: 5 }] },
+    })
+    expect(s.apps.leftovers).toEqual([{ path: '/l', label: 'l', bytes: 5 }])
+  })
+
+  it('removes the uninstalled app on cleanResult', () => {
+    let s = initialState()
+    s = reduce(s, { type: 'setTab', tab: 'apps' })
+    s.apps.apps = [
+      { id: '/A.app', name: 'A', bundleId: 'com.a', path: '/A.app', bytes: 10, arch: 'intel' },
+    ]
+    s = reduce(s, { type: 'startClean', ids: ['/A.app'] })
+    s = reduce(s, { type: 'event', event: { event: 'cleanResult', trashed: 10, errors: [] } })
+    expect(s.apps.apps.length).toBe(0)
+  })
+})
