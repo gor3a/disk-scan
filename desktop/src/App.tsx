@@ -8,6 +8,7 @@ import { humanBytes } from './lib/format'
 import { HeroBar } from './components/HeroBar'
 import { Group } from './components/Group'
 import { Tabs } from './components/Tabs'
+import { RescanButton } from './components/RescanButton'
 import { ScanLine } from './components/ScanLine'
 import { ProjectsView } from './components/ProjectsView'
 import { MapView } from './components/MapView'
@@ -159,6 +160,47 @@ export default function App() {
     window.dscan.send({ cmd: 'apps' })
   }
 
+  const showApps = platform === 'darwin' && s.apps.hostAppleSilicon
+  const currentScanning =
+    s.tab === 'map' ? s.map.scanning : s.tab === 'apps' ? s.apps.scanning : activeTab(s).scanning
+  const reloadCurrent = () => {
+    if (s.tab === 'cleanup') scanCleanup()
+    else if (s.tab === 'projects') scanProjects(projectsRoot.current)
+    else if (s.tab === 'map') scanMap(mapRoot.current)
+    else scanApps()
+  }
+  const stopCurrent = () => {
+    window.dscan.send({ cmd: 'cancel' })
+    dispatch({ type: 'stopScan' })
+  }
+
+  // App keyboard shortcuts. Browser defaults (⌘R reload, devtools, zoom) are
+  // disabled in the main process, so ⌘R is free to mean "rescan" here.
+  useEffect(() => {
+    const tabs: Tab[] = ['cleanup', 'projects', 'map', ...(showApps ? (['apps'] as Tab[]) : [])]
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey
+      if (mod && e.key.toLowerCase() === 'r') {
+        e.preventDefault()
+        reloadCurrent()
+      } else if (mod && e.key === ',') {
+        e.preventDefault()
+        dispatch({ type: 'openModal', modal: 'settings' })
+      } else if (mod && /^[1-9]$/.test(e.key)) {
+        const target = tabs[Number(e.key) - 1]
+        if (target) {
+          e.preventDefault()
+          dispatch({ type: 'setTab', tab: target })
+        }
+      } else if (e.key === 'Escape' && currentScanning && s.modal === null) {
+        stopCurrent()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.tab, currentScanning, showApps, s.modal])
+
   useEffect(() => {
     if (startedCleanup.current) return
     startedCleanup.current = true
@@ -301,17 +343,18 @@ export default function App() {
         />
       )}
 
-      <Tabs
-        tab={s.tab}
-        onTab={(tab: Tab) => dispatch({ type: 'setTab', tab })}
-        showApps={platform === 'darwin' && s.apps.hostAppleSilicon}
-      />
+      <div className="flex items-end justify-between pr-5">
+        <Tabs tab={s.tab} onTab={(tab: Tab) => dispatch({ type: 'setTab', tab })} showApps={showApps} />
+        <div className="pb-1">
+          <RescanButton scanning={currentScanning} onReload={reloadCurrent} onStop={stopCurrent} />
+        </div>
+      </div>
 
       {s.tab !== 'map' && s.tab !== 'apps' && (
         <HeroBar reclaimable={selectedTotal(items, t.selection)} disk={t.disk} onClean={doClean} />
       )}
       <ScanLine
-        scanning={s.tab === 'map' ? s.map.scanning : t.scanning}
+        scanning={s.tab === 'map' ? s.map.scanning : s.tab === 'apps' ? false : t.scanning}
         phase={s.tab === 'map' ? 'map' : t.phase}
         scanned={s.tab === 'map' ? s.map.scanned : t.scanned}
         bytes={s.tab === 'map' ? s.map.bytes : t.bytes}

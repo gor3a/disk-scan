@@ -14,6 +14,26 @@ const item = (id: string): ItemDTO => ({
   selectable: true,
 })
 
+describe('stopScan', () => {
+  it('clears scanning on the active tab (cleanup/projects/map/apps)', () => {
+    let s = reduce(initialState(), { type: 'startScan', tab: 'cleanup' })
+    expect(activeTab(s).scanning).toBe(true)
+    s = reduce(s, { type: 'stopScan' })
+    expect(activeTab(s).scanning).toBe(false)
+    expect(s.scanningTab).toBe(null)
+
+    s = reduce(s, { type: 'startScan', tab: 'map' })
+    expect(s.map.scanning).toBe(true)
+    s = reduce(s, { type: 'stopScan' })
+    expect(s.map.scanning).toBe(false)
+
+    s = reduce(s, { type: 'startScan', tab: 'apps' })
+    expect(s.apps.scanning).toBe(true)
+    s = reduce(s, { type: 'stopScan' })
+    expect(s.apps.scanning).toBe(false)
+  })
+})
+
 describe('state reducer', () => {
   it('renders items while scanning (no scanDone gate)', () => {
     let s = reduce(initialState(), { type: 'startScan', tab: 'cleanup' })

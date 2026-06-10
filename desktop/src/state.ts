@@ -62,6 +62,7 @@ export interface State {
 export type Action =
   | { type: 'setTab'; tab: Tab }
   | { type: 'startScan'; tab: Tab }
+  | { type: 'stopScan' }
   | { type: 'startClean'; ids: string[] }
   | { type: 'event'; event: DscanEvent }
   | { type: 'setSelection'; selection: Selection }
@@ -130,6 +131,12 @@ export function reduce(s: State, a: Action): State {
         tab: a.tab,
         scanningTab: a.tab,
       }
+    case 'stopScan':
+      // User stopped the in-progress scan: clear scanning on the active slice.
+      // (A cancel may not produce a terminal event, so we settle the UI here.)
+      if (s.tab === 'map') return { ...s, map: { ...s.map, scanning: false }, scanningTab: null }
+      if (s.tab === 'apps') return { ...s, apps: { ...s.apps, scanning: false }, scanningTab: null }
+      return { ...setTabState(s, s.tab, { ...activeTab(s), scanning: false }), scanningTab: null }
     case 'startClean':
       return { ...s, pendingCleanIds: a.ids }
     case 'setSelection':
