@@ -116,6 +116,16 @@ export default function App() {
   // Subscribe to update status from the main process.
   useEffect(() => window.dscan.update.onStatus(setUpdate), [])
 
+  // On macOS, run the apps scan once on mount to learn the host arch (drives
+  // Apps-tab visibility) and pre-populate the list for when the tab is opened.
+  useEffect(() => {
+    if (platform === 'darwin' && !startedApps.current) {
+      startedApps.current = true
+      scanApps()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [platform])
+
   // (Re)apply the OS scheduled-scan job when the schedule settings change.
   useEffect(() => {
     window.dscan.setSchedule({
@@ -291,7 +301,11 @@ export default function App() {
         />
       )}
 
-      <Tabs tab={s.tab} onTab={(tab: Tab) => dispatch({ type: 'setTab', tab })} />
+      <Tabs
+        tab={s.tab}
+        onTab={(tab: Tab) => dispatch({ type: 'setTab', tab })}
+        showApps={platform === 'darwin' && s.apps.hostAppleSilicon}
+      />
 
       {s.tab !== 'map' && s.tab !== 'apps' && (
         <HeroBar reclaimable={selectedTotal(items, t.selection)} disk={t.disk} onClean={doClean} />
