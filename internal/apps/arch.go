@@ -13,10 +13,10 @@ import "debug/macho"
 type Arch int
 
 const (
-	ArchUnknown Arch = iota
-	ArchIntel        // x86_64 / i386 only — runs under Rosetta on Apple Silicon
-	ArchAppleSilicon // arm64 only — native
-	ArchUniversal    // both — runs native
+	ArchUnknown      Arch = iota
+	ArchIntel             // x86_64 / i386 only — runs under Rosetta on Apple Silicon
+	ArchAppleSilicon      // arm64 only — native
+	ArchUniversal         // both — runs native
 )
 
 func (a Arch) String() string {
@@ -53,4 +53,33 @@ func classify(cpus []macho.Cpu) Arch {
 	default:
 		return ArchUnknown
 	}
+}
+
+// readArchs returns the CPU types present in the Mach-O at path, handling both
+// fat (universal) and thin binaries.
+func readArchs(path string) ([]macho.Cpu, error) {
+	if fat, err := macho.OpenFat(path); err == nil {
+		defer fat.Close()
+		cpus := make([]macho.Cpu, 0, len(fat.Arches))
+		for _, a := range fat.Arches {
+			cpus = append(cpus, a.Cpu)
+		}
+		return cpus, nil
+	}
+	f, err := macho.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return []macho.Cpu{f.Cpu}, nil
+}
+
+// ArchOf classifies the executable at path. Unreadable or non-Mach-O files
+// (scripts, missing executables) classify as ArchUnknown.
+func ArchOf(exePath string) Arch {
+	cpus, err := readArchs(exePath)
+	if err != nil {
+		return ArchUnknown
+	}
+	return classify(cpus)
 }
