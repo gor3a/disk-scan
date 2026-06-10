@@ -3,9 +3,25 @@ package serve
 import (
 	"testing"
 
+	"github.com/gor3a/disk-scan/internal/apps"
 	"github.com/gor3a/disk-scan/internal/engine"
 	"github.com/gor3a/disk-scan/internal/rules"
 )
+
+func TestAppDTO(t *testing.T) {
+	a := apps.App{Path: "/Applications/Foo.app", Name: "Foo", BundleID: "com.acme.foo", Bytes: 1234, Arch: apps.ArchIntel}
+	d := appDTO(a)
+	if d.ID != a.Path || d.Name != "Foo" || d.BundleID != "com.acme.foo" || d.Bytes != 1234 || d.Arch != "intel" {
+		t.Fatalf("appDTO = %+v", d)
+	}
+}
+
+func TestLeftoverDTO(t *testing.T) {
+	d := toLeftoverDTO(apps.Leftover{Path: "/x/y", Bytes: 9})
+	if d.Path != "/x/y" || d.Label != "y" || d.Bytes != 9 {
+		t.Fatalf("toLeftoverDTO = %+v", d)
+	}
+}
 
 func engineProject(path, dir string, bytes, modified int64) engine.Project {
 	return engine.Project{Path: path, Dir: dir, Bytes: bytes, Modified: modified}

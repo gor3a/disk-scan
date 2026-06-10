@@ -8,9 +8,11 @@ import { humanBytes } from './lib/format'
 import { HeroBar } from './components/HeroBar'
 import { Group } from './components/Group'
 import { Tabs } from './components/Tabs'
+import { RescanButton } from './components/RescanButton'
 import { ScanLine } from './components/ScanLine'
 import { ProjectsView } from './components/ProjectsView'
 import { MapView } from './components/MapView'
+import { AppsView } from './components/AppsView'
 import { UpdateBanner } from './components/UpdateBanner'
 import { Modal } from './components/Modal'
 import type { UpdateStatus } from './lib/update'
@@ -34,6 +36,7 @@ declare global {
       onEvent: (cb: (e: DscanEvent) => void) => () => void
       appInfo: () => Promise<{ version: string; platform: string; isPackaged: boolean }>
       reveal: (p: string) => void
+      findNative: (name: string) => Promise<void>
       uninstall: () => Promise<{ ok: boolean; reason?: 'dev' | 'managed' }>
       getSettings: () => Promise<Settings>
       setSettings: (p: Partial<Settings>) => Promise<Settings>
@@ -73,7 +76,7 @@ export default function App() {
   const pendingCount = useRef(0)
   const lastResult = useRef<CleanResult | undefined>(undefined)
   // Auto-selection follows incoming items until the user manually toggles.
-  const touched = useRef<Record<Tab, boolean>>({ cleanup: false, projects: false, map: false })
+  const touched = useRef<Record<Tab, boolean>>({ cleanup: false, projects: false, map: false, apps: false })
   const [trashTarget, setTrashTarget] = useState<TreeNode | null>(null)
 
   const [menuOpen, setMenuOpen] = useState(false)
@@ -114,6 +117,16 @@ export default function App() {
   // Subscribe to update status from the main process.
   useEffect(() => window.dscan.update.onStatus(setUpdate), [])
 
+  // On macOS, run the apps scan once on mount to learn the host arch (drives
+  // Apps-tab visibility) and pre-populate the list for when the tab is opened.
+  useEffect(() => {
+    if (platform === 'darwin' && !startedApps.current) {
+      startedApps.current = true
+      scanApps()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [platform])
+
   // (Re)apply the OS scheduled-scan job when the schedule settings change.
   useEffect(() => {
     window.dscan.setSchedule({
@@ -140,6 +153,53 @@ export default function App() {
     dispatch({ type: 'startScan', tab: 'map' })
     window.dscan.send({ cmd: 'map', root: root === '~' ? '' : root, excludes })
   }
+
+  const startedApps = useRef(false)
+  const scanApps = () => {
+    dispatch({ type: 'startScan', tab: 'apps' })
+    window.dscan.send({ cmd: 'apps' })
+  }
+
+  const showApps = platform === 'darwin' && s.apps.hostAppleSilicon
+  const currentScanning =
+    s.tab === 'map' ? s.map.scanning : s.tab === 'apps' ? s.apps.scanning : activeTab(s).scanning
+  const reloadCurrent = () => {
+    if (s.tab === 'cleanup') scanCleanup()
+    else if (s.tab === 'projects') scanProjects(projectsRoot.current)
+    else if (s.tab === 'map') scanMap(mapRoot.current)
+    else scanApps()
+  }
+  const stopCurrent = () => {
+    window.dscan.send({ cmd: 'cancel' })
+    dispatch({ type: 'stopScan' })
+  }
+
+  // App keyboard shortcuts. Browser defaults (⌘R reload, devtools, zoom) are
+  // disabled in the main process, so ⌘R is free to mean "rescan" here.
+  useEffect(() => {
+    const tabs: Tab[] = ['cleanup', 'projects', 'map', ...(showApps ? (['apps'] as Tab[]) : [])]
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey
+      if (mod && e.key.toLowerCase() === 'r') {
+        e.preventDefault()
+        reloadCurrent()
+      } else if (mod && e.key === ',') {
+        e.preventDefault()
+        dispatch({ type: 'openModal', modal: 'settings' })
+      } else if (mod && /^[1-9]$/.test(e.key)) {
+        const target = tabs[Number(e.key) - 1]
+        if (target) {
+          e.preventDefault()
+          dispatch({ type: 'setTab', tab: target })
+        }
+      } else if (e.key === 'Escape' && currentScanning && s.modal === null) {
+        stopCurrent()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.tab, currentScanning, showApps, s.modal])
 
   useEffect(() => {
     if (startedCleanup.current) return
@@ -242,6 +302,13 @@ export default function App() {
     setTrashTarget(null)
   }
 
+  const onRequestLeftovers = (path: string) => window.dscan.send({ cmd: 'appLeftovers', path })
+  const onUninstallApp = (paths: string[]) => {
+    pendingCount.current = 1
+    dispatch({ type: 'startClean', ids: [paths[0]] }) // the app bundle's id is its path
+    window.dscan.send({ cmd: 'uninstall', paths })
+  }
+
   const closeModal = () => dispatch({ type: 'openModal', modal: null })
 
   return (
@@ -276,13 +343,18 @@ export default function App() {
         />
       )}
 
-      <Tabs tab={s.tab} onTab={(tab: Tab) => dispatch({ type: 'setTab', tab })} />
+      <div className="flex items-end justify-between pr-5">
+        <Tabs tab={s.tab} onTab={(tab: Tab) => dispatch({ type: 'setTab', tab })} showApps={showApps} />
+        <div className="pb-1">
+          <RescanButton scanning={currentScanning} onReload={reloadCurrent} onStop={stopCurrent} />
+        </div>
+      </div>
 
-      {s.tab !== 'map' && (
+      {s.tab !== 'map' && s.tab !== 'apps' && (
         <HeroBar reclaimable={selectedTotal(items, t.selection)} disk={t.disk} onClean={doClean} />
       )}
       <ScanLine
-        scanning={s.tab === 'map' ? s.map.scanning : t.scanning}
+        scanning={s.tab === 'map' ? s.map.scanning : s.tab === 'apps' ? false : t.scanning}
         phase={s.tab === 'map' ? 'map' : t.phase}
         scanned={s.tab === 'map' ? s.map.scanned : t.scanned}
         bytes={s.tab === 'map' ? s.map.bytes : t.bytes}
@@ -314,7 +386,7 @@ export default function App() {
           onChangeFolder={onChangeFolder}
           onExclude={onExclude}
         />
-      ) : (
+      ) : s.tab === 'map' ? (
         <MapView
           tree={s.map.tree}
           scanning={s.map.scanning}
@@ -326,6 +398,16 @@ export default function App() {
           onReveal={(p) => window.dscan.reveal(p)}
           onExclude={onMapExclude}
           onTrash={(node) => setTrashTarget(node)}
+        />
+      ) : (
+        <AppsView
+          apps={s.apps.apps}
+          scanning={s.apps.scanning}
+          leftovers={s.apps.leftovers}
+          onReveal={(p) => window.dscan.reveal(p)}
+          onFindNative={(name) => window.dscan.findNative(name)}
+          onRequestLeftovers={onRequestLeftovers}
+          onUninstall={onUninstallApp}
         />
       )}
 
@@ -351,9 +433,6 @@ export default function App() {
 
       <footer className="flex items-center border-t border-line bg-surface px-5 py-1.5 text-[11.5px] text-ink-soft">
         <span className="font-display text-[13px] text-ink">dscan</span>
-        <span className="ml-auto">
-          <SupportButton onClick={() => window.dscan.openExternal(KOFI)} />
-        </span>
       </footer>
 
       {s.modal === 'about' && (

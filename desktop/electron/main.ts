@@ -1,4 +1,13 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  dialog,
+  shell,
+  Menu,
+  type MenuItemConstructorOptions,
+  type WebContents,
+} from 'electron'
 import { join, dirname } from 'node:path'
 import { existsSync, writeFileSync } from 'node:fs'
 import { Sidecar } from './sidecar'
@@ -7,6 +16,7 @@ import { Store } from './store'
 import { applySchedule, type Cadence } from './schedule'
 import { initUpdater } from './updater'
 import type { Request } from '../src/lib/protocol'
+import { matchesAppName } from '../src/lib/apps'
 
 const SPLASH_MIN_MS = 1100 // keep the brand moment visible even on fast loads
 
@@ -34,7 +44,49 @@ function registerWindowControls(w: BrowserWindow) {
   w.webContents.on('did-finish-load', sync)
 }
 
+// installAppMenu replaces the default application menu. It keeps the Edit menu
+// (so cut/copy/paste/select-all still work in inputs) and Quit, but drops the
+// View menu — removing the reload / force-reload / zoom / dev-tools
+// accelerators. DevTools stays available via a Dev menu in unpackaged builds.
+function installAppMenu() {
+  const isMac = process.platform === 'darwin'
+  const template: MenuItemConstructorOptions[] = []
+  if (isMac) template.push({ role: 'appMenu' })
+  else template.push({ label: 'File', submenu: [{ role: 'quit' }] })
+  template.push({ role: 'editMenu' })
+  if (!app.isPackaged) {
+    template.push({
+      label: 'Dev',
+      submenu: [{ role: 'toggleDevTools' }, { role: 'forceReload' }],
+    })
+  }
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
+
+// blockBrowserShortcuts swallows Chromium's built-in key combos we don't want:
+// view-source, force-reload, zoom always; dev-tools only in packaged builds.
+// Plain ⌘/Ctrl+R is intentionally NOT blocked — with no reload menu role it
+// reaches the renderer, which repurposes it as "rescan".
+function blockBrowserShortcuts(wc: WebContents) {
+  wc.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return
+    const mod = input.meta || input.control
+    const key = input.key.toLowerCase()
+    if (mod && ['=', '+', '-', '0'].includes(input.key)) return event.preventDefault() // zoom
+    if (mod && key === 'u') return event.preventDefault() // view-source
+    if (mod && input.shift && key === 'r') return event.preventDefault() // force-reload
+    if (app.isPackaged) {
+      if (key === 'f12') return event.preventDefault()
+      if (mod && input.alt && key === 'i') return event.preventDefault()
+      if (mod && input.shift && (key === 'i' || key === 'c' || key === 'j'))
+        return event.preventDefault()
+    }
+  })
+}
+
 function createWindow() {
+  installAppMenu()
+
   // Show our icon in the macOS dock during dev (packaged builds get it from
   // electron-builder).
   if (process.platform === 'darwin' && !app.isPackaged) {
@@ -60,6 +112,7 @@ function createWindow() {
     },
   })
   registerWindowControls(win)
+  blockBrowserShortcuts(win.webContents)
   win.once('ready-to-show', () => {
     const wait = Math.max(0, SPLASH_MIN_MS - (Date.now() - shownAt))
     setTimeout(() => {
@@ -119,6 +172,31 @@ ipcMain.handle('dscan:appInfo', () => ({
 
 ipcMain.on('dscan:reveal', (_e, p: string) => {
   if (typeof p === 'string' && p) shell.showItemInFolder(p)
+})
+
+// Find an Apple Silicon version of an Intel app: query the iTunes Search API for
+// a Mac App Store match; open its Store page if found, else a web search.
+ipcMain.handle('dscan:findNative', async (_e, name: string) => {
+  if (typeof name !== 'string' || !name.trim()) return
+  try {
+    const url = `https://itunes.apple.com/search?entity=macSoftware&limit=1&term=${encodeURIComponent(name)}`
+    const res = await fetch(url)
+    const data = (await res.json()) as { results?: Array<{ trackName?: string; trackViewUrl?: string }> }
+    const hit = data.results?.[0]
+    if (
+      hit?.trackViewUrl &&
+      hit.trackViewUrl.startsWith('https://') &&
+      hit.trackName &&
+      matchesAppName(name, hit.trackName)
+    ) {
+      await shell.openExternal(hit.trackViewUrl)
+      return
+    }
+  } catch {
+    // fall through to web search
+  }
+  const q = encodeURIComponent(`${name} Apple Silicon arm64 download`)
+  await shell.openExternal(`https://www.google.com/search?q=${q}`)
 })
 
 ipcMain.handle('dscan:uninstall', async () => {

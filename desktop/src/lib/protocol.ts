@@ -1,3 +1,20 @@
+export type AppArch = 'intel' | 'appleSilicon' | 'universal' | 'unknown'
+
+export interface AppDTO {
+  id: string
+  name: string
+  bundleId: string
+  path: string
+  bytes: number
+  arch: AppArch
+}
+
+export interface Leftover {
+  path: string
+  label: string
+  bytes: number
+}
+
 export type Tier = 'SAFE' | 'REVIEW' | 'KEEP'
 export type Method = 'remove' | 'trash' | 'command'
 
@@ -39,6 +56,9 @@ export type DscanEvent =
   | { event: 'tree'; path?: string; node: TreeNode | null }
   | { event: 'cleanResult'; freed?: number; trashed?: number; errors?: string[] }
   | { event: 'error'; message: string }
+  | { event: 'host'; host: { arch: 'appleSilicon' | 'other' } }
+  | { event: 'app'; app: AppDTO }
+  | { event: 'leftovers'; path?: string; leftovers?: Leftover[] }
 
 export type Request =
   | { cmd: 'scan'; kind?: 'caches' | 'projects'; root?: string; system?: boolean; excludes?: string[] }
@@ -46,6 +66,9 @@ export type Request =
   | { cmd: 'clean'; ids: string[]; dryRun?: boolean; killLockers?: boolean }
   | { cmd: 'trash'; path: string }
   | { cmd: 'cancel' }
+  | { cmd: 'apps' }
+  | { cmd: 'appLeftovers'; path: string }
+  | { cmd: 'uninstall'; paths: string[] }
 
 export function parseEvent(line: string): DscanEvent {
   return JSON.parse(line) as DscanEvent

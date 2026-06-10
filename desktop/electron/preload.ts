@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('dscan', {
   openExternal: (url: string) => ipcRenderer.send('dscan:openExternal', url),
   appInfo: () => ipcRenderer.invoke('dscan:appInfo'),
   reveal: (p: string) => ipcRenderer.send('dscan:reveal', p),
+  findNative: (name: string) => ipcRenderer.invoke('dscan:findNative', name),
   uninstall: () => ipcRenderer.invoke('dscan:uninstall'),
   getSettings: () => ipcRenderer.invoke('dscan:getSettings'),
   setSettings: (partial: unknown) => ipcRenderer.invoke('dscan:setSettings', partial),

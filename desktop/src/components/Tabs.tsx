@@ -1,6 +1,14 @@
 import type { Tab } from '../state'
 
-export function Tabs({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
+export function Tabs({
+  tab,
+  onTab,
+  showApps,
+}: {
+  tab: Tab
+  onTab: (t: Tab) => void
+  showApps: boolean
+}) {
   const item = (t: Tab, label: string) => (
     <button
       onClick={() => onTab(t)}
@@ -18,6 +26,7 @@ export function Tabs({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
       {item('cleanup', 'Clean up')}
       {item('projects', 'Projects')}
       {item('map', 'Map')}
+      {showApps && item('apps', 'Apps')}
     </div>
   )
 }
