@@ -7,6 +7,7 @@ import { Store } from './store'
 import { applySchedule, type Cadence } from './schedule'
 import { initUpdater } from './updater'
 import type { Request } from '../src/lib/protocol'
+import { matchesAppName } from '../src/lib/apps'
 
 const SPLASH_MIN_MS = 1100 // keep the brand moment visible even on fast loads
 
@@ -119,6 +120,26 @@ ipcMain.handle('dscan:appInfo', () => ({
 
 ipcMain.on('dscan:reveal', (_e, p: string) => {
   if (typeof p === 'string' && p) shell.showItemInFolder(p)
+})
+
+// Find an Apple Silicon version of an Intel app: query the iTunes Search API for
+// a Mac App Store match; open its Store page if found, else a web search.
+ipcMain.handle('dscan:findNative', async (_e, name: string) => {
+  if (typeof name !== 'string' || !name.trim()) return
+  try {
+    const url = `https://itunes.apple.com/search?entity=macSoftware&limit=1&term=${encodeURIComponent(name)}`
+    const res = await fetch(url)
+    const data = (await res.json()) as { results?: Array<{ trackName?: string; trackViewUrl?: string }> }
+    const hit = data.results?.[0]
+    if (hit?.trackViewUrl && hit.trackName && matchesAppName(name, hit.trackName)) {
+      await shell.openExternal(hit.trackViewUrl)
+      return
+    }
+  } catch {
+    // fall through to web search
+  }
+  const q = encodeURIComponent(`${name} Apple Silicon arm64 download`)
+  await shell.openExternal(`https://www.google.com/search?q=${q}`)
 })
 
 ipcMain.handle('dscan:uninstall', async () => {
