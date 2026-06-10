@@ -1,0 +1,84 @@
+name: Bug report
+description: Report something that doesn't work as expected
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened?
+      description: A clear description of what went wrong.
+      placeholder: e.g., The app crashed when I selected the Downloads folder...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps_to_reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Exact steps to reproduce the behavior. Include the exact `dscan` command or app clicks.
+      placeholder: |
+        1. Open dscan
+        2. Navigate to...
+        3. Select item and press...
+        4. Observe the crash
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected behavior
+      description: What should have happened instead?
+      placeholder: The app should have deleted the file and shown a confirmation message.
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: Which OS are you running?
+      options:
+        - macOS
+        - Linux
+        - Both
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install_method
+    attributes:
+      label: Installation method
+      description: How are you running dscan?
+      options:
+        - Desktop app (DMG)
+        - Desktop app (AppImage)
+        - Desktop app (deb)
+        - CLI (built from source)
+        - CLI (pre-built binary)
+        - Other
+
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: "Output of `dscan --version` or app version shown in UI"
+      placeholder: "v0.5.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs_screenshots
+    attributes:
+      label: Logs and screenshots
+      description: "Paste error messages, terminal output, or screenshots of the TUI. **Do NOT include sensitive paths or user data.**"
+      placeholder: |
+        ```
+        $ dscan --version
+        dscan v0.5.0
+        ```
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Privacy note
+        If this involves unexpected deletion of files, **do not post sensitive file paths or names**. If this is a security concern, see [SECURITY.md](../SECURITY.md) instead of filing a public issue.

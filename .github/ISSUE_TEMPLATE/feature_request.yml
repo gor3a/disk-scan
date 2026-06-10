@@ -1,0 +1,45 @@
+name: Feature request
+description: Suggest an improvement or new cleaning target
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Problem/Motivation
+      description: What pain point or use case would this solve?
+      placeholder: "I need to clean up old log files that dscan currently doesn't recognize..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed solution
+      description: How should dscan behave? What command or UI action would accomplish this?
+      placeholder: "Add a `--include-logs` flag to clean application logs from ~/.cache/app/logs"
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you thought about.
+      placeholder: "Could add a new catalog entry instead of a flag, but that wouldn't work for..."
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Where does this change belong?
+      options:
+        - CLI/TUI
+        - Desktop app (Electron+React)
+        - Both
+        - Other
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Links to related issues, mockups, references, or anything else relevant.
+      placeholder: "See also: #42 — we discussed this in the previous sprint"

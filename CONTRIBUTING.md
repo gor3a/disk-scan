@@ -1,146 +1,139 @@
 # Contributing to dscan
 
-Thanks for your interest in improving `dscan` — an interactive, cross-platform
-(macOS + Linux) disk scanner and cleaner. This guide covers everything you need
-to make a change with confidence.
+Thanks for your interest in contributing! dscan is a cross-platform disk scanner and cleaner: a Go CLI/TUI at the repo root and an Electron + React desktop GUI under `desktop/`.
 
-By participating, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md).
+By participating you agree to our [Code of Conduct](CODE_OF_CONDUCT.md).
 
-## Ways to contribute
-
-- **Add or refine catalog entries** — teach `dscan` about a new cache/build
-  location or fix a misclassification. This is the most common and welcome
-  contribution (see [Adding a catalog entry](#adding-a-catalog-entry)).
-- **Fix bugs** — see open issues, or file one first.
-- **Improve the TUI / UX.**
-- **Docs** — clarify usage, fix typos, improve this guide.
-
-For anything larger than a bug fix or a catalog tweak, please open an issue to
-discuss the approach first so we don't duplicate effort.
-
-## Development setup
-
-Requirements:
-
-- **Go 1.24+** (the version is pinned in `go.mod`; `go` will fetch the matching
-  toolchain automatically).
-- macOS or Linux. Changes must build and pass tests on **both**.
-
-```bash
-git clone https://github.com/gor3a/disk-scan.git
-cd disk-scan
-go build -o /tmp/dscan .   # build
-/tmp/dscan --version       # smoke test
-/tmp/dscan --dry-run       # scan + interactive checklist, deletes nothing
-```
+---
 
 ## Project layout
 
-The engine packages are terminal-agnostic so a future GUI can reuse them; only
-`tui`/`program.go` know about the terminal.
-
 ```
-internal/rules/   Item model + OS-aware catalog & classifier  (no I/O)
-internal/scan/    filesystem sizing + top-N largest           (read-only)
-internal/clean/   remove / trash / command execution + dry-run
-internal/tui/     headless selection Model (pure, fully tested)
-main.go           CLI flags + wiring (scan → rules → tui → clean)
-program.go        Bubble Tea view/update wiring
-```
-
-## The checks (these are the CI gates)
-
-Run all of these before pushing — CI runs the same on macOS and Linux:
-
-```bash
-gofmt -l .            # must print nothing (run `gofmt -w .` to fix)
-go vet ./...          # must be clean
-go test ./...         # all packages must pass
-go build ./...        # must build
-GOOS=linux  go build ./...   # if you're on macOS, confirm Linux still builds
-GOOS=darwin go build ./...   # if you're on Linux, confirm macOS still builds
+.
+├── main.go            # CLI entry point
+├── program.go         # Bubble Tea TUI wiring
+├── internal/
+│   ├── scan/          # directory traversal & sizing
+│   ├── engine/        # scan orchestration
+│   ├── clean/         # deletion / trash routing
+│   ├── rules/         # built-in and user-defined clean rules + catalog
+│   ├── apps/          # app-bundle detection (macOS)
+│   ├── serve/         # JSON-over-stdio sidecar protocol (desktop ↔ Go)
+│   ├── tui/           # Bubble Tea components
+│   └── notify/        # desktop notifications
+└── desktop/
+    ├── electron/      # main process (main.ts, sidecar.ts, …)
+    ├── src/           # React renderer (components, lib, hooks)
+    └── package.json
 ```
 
-## Test-driven development
+---
 
-We follow TDD. For any logic change:
+## Dev setup
 
-1. Write a failing test that captures the desired behavior.
-2. Make it pass with the minimal change.
-3. Refactor if needed; keep tests green.
+### Prerequisites
 
-Tests are table-driven where it helps. The selection model (`internal/tui`),
-classifier (`internal/rules`), scanner (`internal/scan`), and cleaner
-(`internal/clean`) are all unit-tested without a terminal; `main_test.go` has an
-end-to-end pipeline test against a temp `HOME`.
+- **Go 1.24+** — `go version`
+- **Node.js 20+** and **npm** — for the desktop app only
 
-## Safety rules (non-negotiable)
+### Go CLI / TUI
 
-`dscan` deletes files, so safety is reviewed strictly:
+```sh
+# build
+go build ./...
 
-- **Never make a `KEEP` item selectable.** Protected data (browser profiles,
-  messaging apps, SSH keys, credential stores) must stay `Tier: Keep`.
-- **User data defaults to Trash, not `rm`.** Use `Tier: Review` (which resolves
-  to the Trash method) for anything that isn't a regenerable cache/build output.
-- **Every code path that can delete must have a test** proving it only touches
-  the intended target and that `--dry-run` is side-effect-free.
-- Tests must redirect the trash via `DSCAN_TRASH_DIR` — never touch the real
-  Trash from a test.
+# run all tests; -race catches data races
+go test -race ./...
 
-## Adding a catalog entry
-
-Most contributions are new entries in `internal/rules/catalog.go`. An entry maps
-a path (or a tool command) to a category, a safety tier, and a clean method.
-
-```go
-// In sharedEntries() for cross-platform paths, or the darwin/linux case in Catalog().
-entry("~/.foo/cache", "Foo cache", Caches, Safe)            // hard-deletable cache
-entry("~/.config/foo", "Foo settings", AppData, Keep)       // protected user data
-cmd("brew:cleanup", "Homebrew cleanup", PackageStores,      // run a tool instead of rm
-    "brew", "cleanup", "-s")
+# cross-check both target OSes before opening a PR
+GOOS=linux  go build ./...
+GOOS=darwin go build ./...
 ```
 
-Guidelines:
+### Desktop app (Electron + React)
 
-- Use `~` for the home dir; it is expanded per-user.
-- Pick the tier honestly: `Safe` only if it regenerates automatically with no
-  data loss. When in doubt, use `Review` (→ Trash) or `Keep`.
-- For managed stores (package managers, simulators, Docker), prefer a `cmd(...)`
-  entry that runs the tool's own cleanup rather than `rm`-ing its directory.
-- Keep macOS-only paths in the `darwin` case and Linux-only paths (XDG, distro
-  caches) in the `linux` case; truly shared ones go in `sharedEntries()`.
-- Add/adjust a test in `internal/rules/rules_test.go` if you change
-  classification behavior.
+In dev mode the Electron main process looks for the Go binary at `desktop/dscan-dev` (see `resolveSidecar()` in `desktop/electron/main.ts`). Build it once from the repo root before starting the desktop dev server:
+
+```sh
+# from repo root — produces desktop/dscan-dev
+go build -o desktop/dscan-dev .
+```
+
+Then inside `desktop/`:
+
+```sh
+npm install
+
+# start the Vite + Electron dev server
+npm run dev
+
+# run unit / component tests (vitest)
+npm test
+
+# typecheck + production build
+npm run build
+```
+
+---
+
+## Coding standards
+
+- **Cross-platform first.** All code and scripts must work on both macOS and Linux. No OS-specific shell syntax or hardcoded platform paths.
+- **No hardcoded secrets or credentials** of any kind.
+- **Validate at system boundaries** (user input, external APIs, IPC messages). No defensive validation inside pure internal helpers.
+- **Go:** code must be `gofmt`-clean and `go vet ./...`-clean before a PR.
+- **Desktop (TypeScript):** strict TypeScript — no `any` shortcuts. Add vitest tests for non-trivial logic.
+- **Deletion safety:** anything that removes user data must route through the OS Trash (never a bare `rm`), a `KEEP` item must never become selectable, and the path must be covered by a test.
+
+---
 
 ## Commit messages
 
-We use [Conventional Commits](https://www.conventionalcommits.org/):
+This repo uses **[Conventional Commits](https://www.conventionalcommits.org/)**:
 
 ```
-feat(rules): add catalog entry for the Foo cache
-fix(clean): guard against empty paths before removal
-docs: clarify the --system flag
-test(scan): cover prefix-based de-dup
-chore: bump dependency
+feat:             new user-facing feature
+fix:              bug fix
+docs:             documentation only
+test:             adding or fixing tests
+refactor:         code change with no behavior change
+chore:            tooling, deps, CI, release plumbing
 ```
 
-Common types: `feat`, `fix`, `docs`, `test`, `refactor`, `chore`, `perf`.
+Optional scopes mirror the project layout: `feat(desktop):`, `fix(scan):`, `fix(rules):`, `chore(ci):`, etc.
 
-## Pull request workflow
+---
 
-1. Fork (or branch if you have access). Create a focused branch:
-   `git checkout -b feat/foo-cache`.
-2. Make your change with tests. Keep PRs small and single-purpose.
-3. Run the checks above; ensure they pass on your OS and that the other OS still
-   builds.
-4. Open a PR against `main`. Fill in the PR template; link any related issue.
-5. CI must be green and at least one maintainer review is required to merge.
+## PR policy
 
-Be ready to iterate on review feedback — see our approach in
-[Code of Conduct](CODE_OF_CONDUCT.md). We aim to keep reviews timely and kind.
+- **Squash-only merges, linear history on `main`.** Each PR is squashed into one commit using the PR title — write the PR title as a Conventional Commit (`feat(desktop): add schedule picker`).
+- **Keep PRs focused and single-purpose.** One feature or fix per PR makes the squashed history easy to read and bisect.
+- Fill in the [PR template](.github/PULL_REQUEST_TEMPLATE.md) — especially the checklist items for `gofmt`, `go vet`, tests, and cross-OS builds.
+- Link related issues with `Closes #N` in the PR description.
 
-## Reporting bugs and security issues
+---
 
-- Bugs / features: open a GitHub issue using the templates.
-- Security vulnerabilities: **do not** open a public issue — see
-  [SECURITY.md](SECURITY.md).
+## Tests
+
+TDD is encouraged. The bar before opening a PR:
+
+- `go test -race ./...` passes with no failures or races.
+- `npm test` (vitest) passes inside `desktop/`.
+- New behaviour has new tests; existing tests are not left broken.
+
+---
+
+## Reporting bugs and requesting features
+
+Use the GitHub issue templates:
+
+- **Bug report** — `.github/ISSUE_TEMPLATE/bug_report.md`
+- **Feature request** — `.github/ISSUE_TEMPLATE/feature_request.md`
+
+Search open issues before filing a duplicate. For security vulnerabilities, see [SECURITY.md](SECURITY.md) — do **not** open a public issue.
+
+---
+
+## Releases
+
+Releases are tag-driven (`v*` tags) and built entirely by CI. Tagging and publishing is maintainer-only (@gor3a). If you want a fix shipped sooner, say so in the issue or PR.

@@ -1,34 +1,37 @@
 # Security Policy
 
-## Supported versions
+## Reporting a Vulnerability
 
-`dscan` is pre-1.0; security fixes are applied to the latest `main`.
+If you discover a security vulnerability in dscan, please report it responsibly:
 
-## Reporting a vulnerability
+**Preferred method:** Use GitHub's [private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability) (Security tab → "Report a vulnerability").
 
-Because `dscan` deletes files, security issues are taken seriously — especially
-anything that could cause it to delete, trash, or expose data outside the user's
-explicit selection.
+**Alternative:** Email [mina.sameh.lameh@gmail.com](mailto:mina.sameh.lameh@gmail.com)
 
-**Please do not open a public issue for a vulnerability.** Instead, report it
-privately:
+**Please do not** open a public GitHub issue for security vulnerabilities.
 
-- Use GitHub's **"Report a vulnerability"** (Security → Advisories) on the
-  repository, or
-- Email **mina.sameh.lameh@gmail.com** with the details.
+## What to Include
 
-Include:
+When reporting, please provide:
+- Affected version(s) and operating system(s)
+- Steps to reproduce the vulnerability
+- Potential impact (severity assessment if possible)
 
-- A description of the issue and its impact.
-- Steps to reproduce (a minimal case is ideal).
-- The OS and `dscan --version`.
+## Response & Disclosure
 
-We'll acknowledge your report, investigate, and coordinate a fix and disclosure
-timeline with you. Thank you for helping keep users safe.
+- We aim to acknowledge reports within a few days
+- As a volunteer-maintained project, fixes are best-effort
+- We practice coordinated disclosure — please allow the maintainer reasonable time to develop and release a fix before public disclosure
 
-## Scope examples
+## Supported Versions
 
-In scope: a path that should be `KEEP` becoming deletable; `--dry-run`
-performing a deletion; the cleaner removing a path outside the selected item;
-trash overwriting an unrelated trashed item; classification that routes user
-data to hard-delete instead of Trash.
+| Version | Supported          |
+|---------|------------------|
+| Latest  | ✅ Security fixes |
+| Older   | ❌ Unsupported   |
+
+Only the latest released version receives security patches.
+
+## Data & Privacy
+
+dscan operates entirely locally on your system. It does not upload files, directories, or any data to remote servers. The tool contains no telemetry or tracking.
