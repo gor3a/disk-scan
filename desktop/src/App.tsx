@@ -11,6 +11,7 @@ import { Tabs } from './components/Tabs'
 import { ScanLine } from './components/ScanLine'
 import { ProjectsView } from './components/ProjectsView'
 import { MapView } from './components/MapView'
+import { AppsView } from './components/AppsView'
 import { UpdateBanner } from './components/UpdateBanner'
 import { Modal } from './components/Modal'
 import type { UpdateStatus } from './lib/update'
@@ -34,6 +35,7 @@ declare global {
       onEvent: (cb: (e: DscanEvent) => void) => () => void
       appInfo: () => Promise<{ version: string; platform: string; isPackaged: boolean }>
       reveal: (p: string) => void
+      findNative: (name: string) => Promise<void>
       uninstall: () => Promise<{ ok: boolean; reason?: 'dev' | 'managed' }>
       getSettings: () => Promise<Settings>
       setSettings: (p: Partial<Settings>) => Promise<Settings>
@@ -73,7 +75,7 @@ export default function App() {
   const pendingCount = useRef(0)
   const lastResult = useRef<CleanResult | undefined>(undefined)
   // Auto-selection follows incoming items until the user manually toggles.
-  const touched = useRef<Record<Tab, boolean>>({ cleanup: false, projects: false, map: false })
+  const touched = useRef<Record<Tab, boolean>>({ cleanup: false, projects: false, map: false, apps: false })
   const [trashTarget, setTrashTarget] = useState<TreeNode | null>(null)
 
   const [menuOpen, setMenuOpen] = useState(false)
@@ -139,6 +141,12 @@ export default function App() {
     mapRoot.current = root
     dispatch({ type: 'startScan', tab: 'map' })
     window.dscan.send({ cmd: 'map', root: root === '~' ? '' : root, excludes })
+  }
+
+  const startedApps = useRef(false)
+  const scanApps = () => {
+    dispatch({ type: 'startScan', tab: 'apps' })
+    window.dscan.send({ cmd: 'apps' })
   }
 
   useEffect(() => {
@@ -242,6 +250,13 @@ export default function App() {
     setTrashTarget(null)
   }
 
+  const onRequestLeftovers = (path: string) => window.dscan.send({ cmd: 'appLeftovers', path })
+  const onUninstallApp = (paths: string[]) => {
+    pendingCount.current = 1
+    dispatch({ type: 'startClean', ids: [paths[0]] }) // the app bundle's id is its path
+    window.dscan.send({ cmd: 'uninstall', paths })
+  }
+
   const closeModal = () => dispatch({ type: 'openModal', modal: null })
 
   return (
@@ -278,7 +293,7 @@ export default function App() {
 
       <Tabs tab={s.tab} onTab={(tab: Tab) => dispatch({ type: 'setTab', tab })} />
 
-      {s.tab !== 'map' && (
+      {s.tab !== 'map' && s.tab !== 'apps' && (
         <HeroBar reclaimable={selectedTotal(items, t.selection)} disk={t.disk} onClean={doClean} />
       )}
       <ScanLine
@@ -314,7 +329,7 @@ export default function App() {
           onChangeFolder={onChangeFolder}
           onExclude={onExclude}
         />
-      ) : (
+      ) : s.tab === 'map' ? (
         <MapView
           tree={s.map.tree}
           scanning={s.map.scanning}
@@ -326,6 +341,16 @@ export default function App() {
           onReveal={(p) => window.dscan.reveal(p)}
           onExclude={onMapExclude}
           onTrash={(node) => setTrashTarget(node)}
+        />
+      ) : (
+        <AppsView
+          apps={s.apps.apps}
+          scanning={s.apps.scanning}
+          leftovers={s.apps.leftovers}
+          onReveal={(p) => window.dscan.reveal(p)}
+          onFindNative={(name) => window.dscan.findNative(name)}
+          onRequestLeftovers={onRequestLeftovers}
+          onUninstall={onUninstallApp}
         />
       )}
 
