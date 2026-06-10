@@ -2,12 +2,91 @@ package serve
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func runOne(t *testing.T, home string, req Request) []Event {
+	t.Helper()
+	in, _ := json.Marshal(req)
+	var out bytes.Buffer
+	if err := Run(strings.NewReader(string(in)+"\n"), &out, "darwin", home); err != nil {
+		t.Fatal(err)
+	}
+	var evs []Event
+	sc := bufio.NewScanner(&out)
+	for sc.Scan() {
+		var e Event
+		if err := json.Unmarshal(sc.Bytes(), &e); err != nil {
+			t.Fatalf("bad event line %q: %v", sc.Text(), err)
+		}
+		evs = append(evs, e)
+	}
+	return evs
+}
+
+func TestUninstallTrashesPaths(t *testing.T) {
+	home := t.TempDir()
+	f1 := filepath.Join(home, "a.txt")
+	f2 := filepath.Join(home, "b.txt")
+	if err := os.WriteFile(f1, []byte("hi"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(f2, []byte("there"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	evs := runOne(t, home, Request{Cmd: "uninstall", Paths: []string{f1, f2}})
+	var done *Event
+	for i := range evs {
+		if evs[i].Event == "cleanResult" {
+			done = &evs[i]
+		}
+	}
+	if done == nil {
+		t.Fatal("no cleanResult emitted")
+	}
+	if len(done.Errors) != 0 {
+		t.Fatalf("unexpected errors: %v", done.Errors)
+	}
+	if _, err := os.Stat(f1); !os.IsNotExist(err) {
+		t.Error("f1 not trashed")
+	}
+}
+
+func TestAppLeftoversEmitsList(t *testing.T) {
+	home := t.TempDir()
+	dir := filepath.Join(home, "Library", "Caches", "com.acme.foo")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	app := filepath.Join(home, "Foo.app", "Contents")
+	if err := os.MkdirAll(filepath.Join(app, "MacOS"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	plistXML := `<?xml version="1.0"?><plist version="1.0"><dict>` +
+		`<key>CFBundleIdentifier</key><string>com.acme.foo</string></dict></plist>`
+	if err := os.WriteFile(filepath.Join(app, "Info.plist"), []byte(plistXML), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	evs := runOne(t, home, Request{Cmd: "appLeftovers", Path: filepath.Join(home, "Foo.app")})
+	var found bool
+	for _, e := range evs {
+		if e.Event == "leftovers" {
+			for _, l := range e.Leftovers {
+				if strings.HasSuffix(l.Path, "com.acme.foo") {
+					found = true
+				}
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("leftovers event missing the cache dir: %+v", evs)
+	}
+}
 
 // decodeEvents parses newline-delimited JSON Events from r.
 func decodeEvents(t *testing.T, r string) []Event {

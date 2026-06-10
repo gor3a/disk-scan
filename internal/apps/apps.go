@@ -36,6 +36,9 @@ func canceled(c <-chan struct{}) bool {
 	}
 }
 
+// BundleInfo returns an app's CFBundleExecutable and CFBundleIdentifier.
+func BundleInfo(appPath string) (exe, bundleID string) { return bundleInfo(appPath) }
+
 // bundleInfo reads CFBundleExecutable + CFBundleIdentifier from an app's
 // Info.plist (binary or XML). Missing/unreadable plists yield empty strings.
 func bundleInfo(appPath string) (exe, bundleID string) {

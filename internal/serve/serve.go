@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/gor3a/disk-scan/internal/apps"
 	"github.com/gor3a/disk-scan/internal/clean"
 	"github.com/gor3a/disk-scan/internal/engine"
 	"github.com/gor3a/disk-scan/internal/rules"
@@ -49,6 +50,12 @@ func Run(in io.Reader, out io.Writer, goos, home string) error {
 			s.trashPath(req.Path)
 		case "cancel":
 			s.cancelScan()
+		case "apps":
+			s.startApps()
+		case "appLeftovers":
+			s.appLeftovers(req.Path)
+		case "uninstall":
+			s.uninstall(req.Paths)
 		}
 	}
 	s.wg.Wait()
@@ -240,4 +247,80 @@ func (s *server) cancelScan() {
 		s.cancel = nil
 	}
 	s.mu.Unlock()
+}
+
+// startApps reports the host arch, then streams the installed apps.
+func (s *server) startApps() {
+	s.cancelScan()
+	cancel := make(chan struct{})
+	s.mu.Lock()
+	s.cancel = cancel
+	s.mu.Unlock()
+
+	arch := "other"
+	if apps.HostIsAppleSilicon() {
+		arch = "appleSilicon"
+	}
+	s.emit(Event{Event: "host", Host: &hostInfo{Arch: arch}})
+
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		n := 0
+		apps.Scan(s.home, func(a apps.App) {
+			d := appDTO(a)
+			s.emit(Event{Event: "app", App: &d})
+			n++
+			s.emit(Event{Event: "progress", Phase: "apps", Scanned: n, Path: a.Path})
+		}, cancel)
+		if !canceledCh(cancel) {
+			s.emit(Event{Event: "scanDone"})
+		}
+	}()
+}
+
+// appLeftovers emits the support files associated with an app's bundle id.
+func (s *server) appLeftovers(appPath string) {
+	_, bundleID := apps.BundleInfo(appPath)
+	var dtos []leftoverDTO
+	for _, l := range apps.Leftovers(s.home, bundleID) {
+		dtos = append(dtos, toLeftoverDTO(l))
+	}
+	s.emit(Event{Event: "leftovers", Path: appPath, Leftovers: dtos})
+}
+
+// uninstall moves each given path to the Trash (app bundle + chosen leftovers).
+func (s *server) uninstall(paths []string) {
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		var trashed int64
+		var errs []string
+		for _, p := range paths {
+			if p == "" || !filepath.IsAbs(p) {
+				errs = append(errs, "invalid path: "+p)
+				continue
+			}
+			if _, err := os.Stat(p); err != nil {
+				errs = append(errs, err.Error())
+				continue
+			}
+			size, _ := scan.DirSizeCancel(p, nil)
+			if err := clean.Trash(p); err != nil {
+				errs = append(errs, filepath.Base(p)+": "+err.Error())
+				continue
+			}
+			trashed += size
+		}
+		s.emit(Event{Event: "cleanResult", Trashed: trashed, Errors: errs})
+	}()
+}
+
+func canceledCh(c <-chan struct{}) bool {
+	select {
+	case <-c:
+		return true
+	default:
+		return false
+	}
 }
