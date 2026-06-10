@@ -6,6 +6,28 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-06-10
+
+### Added
+
+- **App architecture audit (macOS)** — a new **Apps** tab on Apple Silicon Macs
+  that lists installed apps with an **Intel / Universal / Apple Silicon** badge,
+  flags Intel-only apps that run under Rosetta, and offers Reveal, **Find Apple
+  Silicon version** (Mac App Store, falling back to a web search), and
+  **Uninstall** (the app bundle plus its matching support files, all moved to the
+  Trash so they're recoverable). Hidden on Intel Macs and Linux.
+- **Per-tab Reload / Stop** — every tab now has a single toggle that rescans when
+  idle and stops an in-progress scan.
+- **Keyboard shortcuts** — ⌘/Ctrl+R rescans the current tab, ⌘/Ctrl+1–4 switch
+  tabs, Esc stops a scan, and ⌘/Ctrl+, opens Settings.
+
+### Changed
+
+- Disabled the browser's built-in shortcuts (reload / zoom / view-source); a
+  custom application menu keeps copy/paste and adds a Dev menu with DevTools in
+  development builds only.
+- Removed the Ko-fi button from the footer.
+
 ## [0.5.1] - 2026-06-07
 
 ### Changed
@@ -142,7 +164,8 @@ Initial release.
   required) for scripts/CI; `--system` to include system dirs; `--version`.
 - Cross-platform: macOS and Linux. Builds and tests run on both in CI.
 
-[Unreleased]: https://github.com/gor3a/disk-scan/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/gor3a/disk-scan/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/gor3a/disk-scan/releases/tag/v0.6.0
 [0.5.1]: https://github.com/gor3a/disk-scan/releases/tag/v0.5.1
 [0.5.0]: https://github.com/gor3a/disk-scan/releases/tag/v0.5.0
 [0.4.0]: https://github.com/gor3a/disk-scan/releases/tag/v0.4.0
