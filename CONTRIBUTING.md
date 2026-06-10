@@ -127,13 +127,19 @@ TDD is encouraged. The bar before opening a PR:
 
 Use the GitHub issue templates:
 
-- **Bug report** — `.github/ISSUE_TEMPLATE/bug_report.md`
-- **Feature request** — `.github/ISSUE_TEMPLATE/feature_request.md`
+- **Bug report** — `.github/ISSUE_TEMPLATE/bug_report.yml`
+- **Feature request** — `.github/ISSUE_TEMPLATE/feature_request.yml`
 
 Search open issues before filing a duplicate. For security vulnerabilities, see [SECURITY.md](SECURITY.md) — do **not** open a public issue.
 
 ---
 
-## Releases
+## Releases (maintainers)
 
-Releases are tag-driven (`v*` tags) and built entirely by CI. Tagging and publishing is maintainer-only (@gor3a). If you want a fix shipped sooner, say so in the issue or PR.
+Releases are scripted (`scripts/`), tag-driven (`v*`), and built by CI. Publishing is maintainer-only (@gor3a).
+
+1. Notes accumulate under `## [Unreleased]` in `CHANGELOG.md` as PRs merge.
+2. `scripts/release.sh <version|major|minor|patch>` — runs preflight checks + tests, bumps the version in both files, promotes the CHANGELOG, then commits, tags, and pushes. CI then builds the installers and drafts a GitHub Release. Use `--dry-run` to preview.
+3. When CI is green: `scripts/publish.sh <vX.Y.Z>` — verifies the release assets and publishes it (this is what enables self-update for users).
+
+If you want a fix shipped sooner, say so in the issue or PR.

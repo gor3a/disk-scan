@@ -6,6 +6,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Release scripts (`scripts/release.sh`, `scripts/publish.sh`) that automate the
+  version bump, CHANGELOG promotion, tagging, and release publishing.
+
 ## [0.6.0] - 2026-06-10
 
 ### Added
