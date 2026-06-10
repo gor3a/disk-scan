@@ -5,6 +5,7 @@ package serve
 import (
 	"path/filepath"
 
+	"github.com/gor3a/disk-scan/internal/apps"
 	"github.com/gor3a/disk-scan/internal/engine"
 	"github.com/gor3a/disk-scan/internal/rules"
 )
@@ -36,6 +37,7 @@ type Request struct {
 	IDs         []string `json:"ids"`         // clean: which items
 	DryRun      bool     `json:"dryRun"`      // clean: preview only
 	KillLockers bool     `json:"killLockers"` // clean: SIGTERM processes holding the paths first
+	Paths       []string `json:"paths"`       // uninstall: paths to move to Trash
 }
 
 // Event is an outbound message (sidecar → main stdout). Only the fields
@@ -54,12 +56,52 @@ type Event struct {
 	Errors      []string     `json:"errors,omitempty"`
 	Message     string       `json:"message,omitempty"`
 	Node        *engine.Node `json:"node,omitempty"` // tree: disk-map root
+	App         *AppDTO      `json:"app,omitempty"`
+	Host        *hostInfo    `json:"host,omitempty"`
+	Leftovers   []leftoverDTO `json:"leftovers,omitempty"`
 }
 
 type diskInfo struct {
 	Used  int64 `json:"used"`
 	Free  int64 `json:"free"`
 	Total int64 `json:"total"`
+}
+
+// AppDTO is the wire form of an apps.App.
+type AppDTO struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	BundleID string `json:"bundleId"`
+	Path     string `json:"path"`
+	Bytes    int64  `json:"bytes"`
+	Arch     string `json:"arch"` // intel|appleSilicon|universal|unknown
+}
+
+type hostInfo struct {
+	Arch string `json:"arch"` // "appleSilicon" | "other"
+}
+
+type leftoverDTO struct {
+	Path  string `json:"path"`
+	Label string `json:"label"`
+	Bytes int64  `json:"bytes"`
+}
+
+func appDTO(a apps.App) AppDTO {
+	return AppDTO{
+		ID:       a.Path,
+		Name:     a.Name,
+		BundleID: a.BundleID,
+		Path:     a.Path,
+		Bytes:    a.Bytes,
+		Arch:     a.Arch.String(),
+	}
+}
+
+// toLeftoverDTO maps a leftover to its wire form. Named distinctly from the
+// leftoverDTO type (Go disallows a func + type sharing a name in one package).
+func toLeftoverDTO(l apps.Leftover) leftoverDTO {
+	return leftoverDTO{Path: l.Path, Label: filepath.Base(l.Path), Bytes: l.Bytes}
 }
 
 func itemID(it rules.Item) string {
