@@ -433,9 +433,6 @@ export default function App() {
 
       <footer className="flex items-center border-t border-line bg-surface px-5 py-1.5 text-[11.5px] text-ink-soft">
         <span className="font-display text-[13px] text-ink">dscan</span>
-        <span className="ml-auto">
-          <SupportButton onClick={() => window.dscan.openExternal(KOFI)} />
-        </span>
       </footer>
 
       {s.modal === 'about' && (
