@@ -13,7 +13,7 @@ for arg in "$@"; do
     --skip-tests) SKIP_TESTS=1 ;;
     -h|--help)    usage ;;
     -*)           die "unknown flag: $arg" ;;
-    *)            [ -z "$SPEC" ] && SPEC="$arg" || die "unexpected argument: $arg" ;;
+    *)            if [ -z "$SPEC" ]; then SPEC="$arg"; else die "unexpected argument: $arg"; fi ;;
   esac
 done
 [ -n "$SPEC" ] || usage
