@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-06-11
+
 ### Fixed
 
 - **Tabs now scan independently.** On launch the app stays on **Clean up** and
@@ -198,7 +200,8 @@ Initial release.
   required) for scripts/CI; `--system` to include system dirs; `--version`.
 - Cross-platform: macOS and Linux. Builds and tests run on both in CI.
 
-[Unreleased]: https://github.com/gor3a/disk-scan/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/gor3a/disk-scan/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/gor3a/disk-scan/releases/tag/v0.7.0
 [0.6.1]: https://github.com/gor3a/disk-scan/releases/tag/v0.6.1
 [0.6.0]: https://github.com/gor3a/disk-scan/releases/tag/v0.6.0
 [0.5.1]: https://github.com/gor3a/disk-scan/releases/tag/v0.5.1
