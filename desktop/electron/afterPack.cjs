@@ -28,14 +28,20 @@ module.exports = async function afterPack(context) {
   const appPath = path.join(context.appOutDir, appName)
   const sidecar = path.join(appPath, 'Contents', 'Resources', 'dscan')
 
-  const sign = (target) =>
-    execFileSync('codesign', ['--force', '--sign', '-', '--timestamp=none', target], {
-      stdio: 'inherit',
-    })
+  const sign = (target, deep) =>
+    execFileSync(
+      'codesign',
+      ['--force', ...(deep ? ['--deep'] : []), '--sign', '-', '--timestamp=none', target],
+      { stdio: 'inherit' },
+    )
 
-  // Sign the nested sidecar first, then the bundle, so the app's seal covers it.
-  if (fs.existsSync(sidecar)) sign(sidecar)
-  sign(appPath)
+  // Sign the nested sidecar first (a Mach-O in Resources/, which --deep does not
+  // cover), then deep-sign the bundle so its seal covers the Electron helpers and
+  // framework. Deep ad-hoc signing is required because cross-built (x64) helpers
+  // ship unsigned, and signing the outer bundle non-deep rejects unsigned nested
+  // code.
+  if (fs.existsSync(sidecar)) sign(sidecar, false)
+  sign(appPath, true)
 
   // Remove quarantine so a locally-built app isn't path-randomized by Gatekeeper.
   try {
