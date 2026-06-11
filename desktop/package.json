@@ -1,7 +1,7 @@
 {
   "name": "dscan-desktop",
   "productName": "dscan",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Interactive disk scanner & cleaner for macOS and Linux",
   "author": "gor3a",
   "license": "MIT",
