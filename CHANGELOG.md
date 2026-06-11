@@ -6,6 +6,30 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Tabs now scan independently.** On launch the app stays on **Clean up** and
+  scans it immediately instead of jumping to the **Apps** tab with an empty
+  Clean up list. Starting or rescanning one tab no longer cancels another, and
+  switching tabs preserves each tab's results and in-progress scan. (The backend
+  runs a scan per tab and tags every event with its tab; the UI routes by that
+  tag instead of a single global "current scan".)
+- **Apps tab crash** — opening **Apps** while Clean up had results turned the tab
+  into a blank screen (`apps is not iterable`); the selection logic no longer
+  runs on tabs that have no selectable list.
+
+### Changed
+
+- **macOS permissions** — the packaged app and its bundled engine are now ad-hoc
+  signed and de-quarantined at build time, and the app declares Desktop /
+  Downloads / Documents usage strings, so a locally-installed build stops
+  re-asking for permission on every launch. (Full Developer ID signing +
+  notarization, which also covers downloaded builds, remains a follow-up.)
+
+### Added
+
+- Per-tab screenshots in the README (Clean up, Projects, Map, Apps).
+
 ## [0.6.1] - 2026-06-11
 
 ### Added

@@ -39,12 +39,23 @@ Highlights:
   `target`, `__pycache__`, …) across a folder, grouped by kind.
 - **Map** — a visual disk-usage treemap: drill into folders and Reveal, Exclude,
   or Move-to-Trash a tile.
+- **Apps** (Apple Silicon) — audit installed apps by architecture, flag
+  Intel-only apps that run under Rosetta, and uninstall an app together with its
+  leftover support files in one step.
 - **Exclude folders** — mark folders dscan should never scan or clean.
 - **Scheduled scans** — an optional background scan (daily/weekly) that notifies
   you, with an opt-in auto-clean of SAFE caches.
 - **Dark mode** — System / Light / Dark, following your OS by default.
 - **Self-update** — Linux installs updates in the background; macOS notifies and
   links to the download.
+
+## Screenshots
+
+| Clean up | Projects |
+| :---: | :---: |
+| ![Clean up — caches & build output by safety tier](assets/dscan-cleanup.png) | ![Projects — heavy build artifacts grouped by kind](assets/dscan-projects.png) |
+| **Map** | **Apps** |
+| ![Map — visual disk-usage treemap](assets/dscan-map.png) | ![Apps — architecture audit on Apple Silicon](assets/dscan-apps.png) |
 
 ## Command line
 
