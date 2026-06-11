@@ -235,7 +235,7 @@ export default function App() {
   // Re-derive the default selection as items stream in / the threshold changes,
   // until the user manually toggles this tab.
   useEffect(() => {
-    if (s.tab === 'map' || touched.current[s.tab] || items.length === 0) return
+    if (s.tab === 'map' || s.tab === 'apps' || touched.current[s.tab] || items.length === 0) return
     setSelection(
       s.tab === 'projects'
         ? staleSelection(items, nowSecs(), s.settings.staleDays)

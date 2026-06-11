@@ -133,6 +133,11 @@ export function reduce(s: State, a: Action): State {
     case 'startClean':
       return { ...s, pendingCleanIds: a.ids }
     case 'setSelection':
+      // Only cleanup/projects have a selectable TabState. map/apps have no
+      // selection model (apps uses local component state), and activeTab() falls
+      // back to the cleanup slice for them — so writing it back here would
+      // clobber s.apps/s.map with a TabState. Ignore.
+      if (s.tab === 'map' || s.tab === 'apps') return s
       return setTabState(s, s.tab, { ...activeTab(s), selection: a.selection })
     case 'setSettings':
       return { ...s, settings: a.settings }

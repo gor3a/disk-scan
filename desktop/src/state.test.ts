@@ -152,6 +152,25 @@ describe('apps tab', () => {
     expect(s.apps.leftovers).toEqual([{ path: '/l', label: 'l', bytes: 5 }])
   })
 
+  it('ignores setSelection on the apps tab (keeps apps array intact)', () => {
+    // Regression: the default-selection effect could fire on the apps tab and
+    // dispatch setSelection, which previously wrote a TabState into s.apps and
+    // turned s.apps.apps into a non-array → "apps is not iterable" in AppsView.
+    let s = initialState()
+    s = reduce(s, { type: 'setTab', tab: 'apps' })
+    s = reduce(s, {
+      type: 'event',
+      event: {
+        event: 'app',
+        tab: 'apps',
+        app: { id: '/A.app', name: 'A', bundleId: 'com.a', path: '/A.app', bytes: 10, arch: 'intel' },
+      },
+    })
+    s = reduce(s, { type: 'setSelection', selection: new Set(['x']) })
+    expect(Array.isArray(s.apps.apps)).toBe(true)
+    expect(s.apps.apps.map((a) => a.id)).toEqual(['/A.app'])
+  })
+
   it('removes the uninstalled app on cleanResult', () => {
     let s = initialState()
     s = reduce(s, { type: 'setTab', tab: 'apps' })
