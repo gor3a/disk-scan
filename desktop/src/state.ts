@@ -48,7 +48,6 @@ export interface AppsState {
 
 export interface State {
   tab: Tab
-  scanningTab: Tab | null
   cleanup: TabState
   projects: TabState
   map: MapState
@@ -84,7 +83,6 @@ function emptyApps(): AppsState {
 export function initialState(): State {
   return {
     tab: 'cleanup',
-    scanningTab: null,
     cleanup: emptyTab(),
     projects: emptyTab(),
     map: emptyMap(),
@@ -117,26 +115,21 @@ export function reduce(s: State, a: Action): State {
     case 'setTab':
       return { ...s, tab: a.tab }
     case 'startScan':
-      if (a.tab === 'map')
-        return { ...s, map: { ...emptyMap(), scanning: true }, tab: 'map', scanningTab: 'map' }
+      // Marks the target slice scanning. It does NOT change the visible tab —
+      // a background scan (e.g. the mount apps probe) must never steal focus.
+      if (a.tab === 'map') return { ...s, map: { ...emptyMap(), scanning: true } }
       if (a.tab === 'apps')
         return {
           ...s,
           apps: { ...emptyApps(), hostAppleSilicon: s.apps.hostAppleSilicon, scanning: true },
-          tab: 'apps',
-          scanningTab: 'apps',
         }
-      return {
-        ...setTabState(s, a.tab, { ...emptyTab(), scanning: true }),
-        tab: a.tab,
-        scanningTab: a.tab,
-      }
+      return setTabState(s, a.tab, { ...emptyTab(), scanning: true })
     case 'stopScan':
-      // User stopped the in-progress scan: clear scanning on the active slice.
-      // (A cancel may not produce a terminal event, so we settle the UI here.)
-      if (s.tab === 'map') return { ...s, map: { ...s.map, scanning: false }, scanningTab: null }
-      if (s.tab === 'apps') return { ...s, apps: { ...s.apps, scanning: false }, scanningTab: null }
-      return { ...setTabState(s, s.tab, { ...activeTab(s), scanning: false }), scanningTab: null }
+      // User stopped the in-progress scan on the visible tab: clear its scanning
+      // flag. (A cancel may not produce a terminal event, so we settle the UI.)
+      if (s.tab === 'map') return { ...s, map: { ...s.map, scanning: false } }
+      if (s.tab === 'apps') return { ...s, apps: { ...s.apps, scanning: false } }
+      return setTabState(s, s.tab, { ...activeTab(s), scanning: false })
     case 'startClean':
       return { ...s, pendingCleanIds: a.ids }
     case 'setSelection':
@@ -151,38 +144,26 @@ export function reduce(s: State, a: Action): State {
 }
 
 function applyEvent(s: State, e: DscanEvent): State {
-  // cleanResult applies to whichever tab initiated the clean (the current tab).
+  // cleanResult applies to the tab that initiated the clean, carried on the event
+  // (falls back to the visible tab for safety).
   if (e.event === 'cleanResult') {
     const result = { freed: e.freed ?? 0, trashed: e.trashed ?? 0, errors: e.errors ?? [] }
-    if (s.tab === 'map') return { ...s, pendingCleanIds: [], result }
-    if (s.tab === 'apps') {
+    const tab = e.tab ?? s.tab
+    if (tab === 'map') return { ...s, pendingCleanIds: [], result }
+    if (tab === 'apps') {
       const cleaned = new Set(s.pendingCleanIds)
       const apps = s.apps.apps.filter((a) => !cleaned.has(a.id))
       return { ...s, apps: { ...s.apps, apps, leftovers: [] }, pendingCleanIds: [], result }
     }
     const cleaned = new Set(s.pendingCleanIds)
-    const t = activeTab(s)
+    const t = s[tab]
     const items = t.items.filter((i) => !cleaned.has(i.id))
     const selection = new Set([...t.selection].filter((id) => !cleaned.has(id)))
     return {
-      ...setTabState(s, s.tab, { ...t, items, selection }),
+      ...setTabState(s, tab, { ...t, items, selection }),
       pendingCleanIds: [],
       result,
     }
-  }
-
-  // Map slice: the tree event and map-scan progress route here, never to a TabState.
-  if (e.event === 'tree') {
-    return { ...s, map: { ...s.map, scanning: false, tree: e.node } }
-  }
-  if (s.scanningTab === 'map') {
-    if (e.event === 'progress') {
-      return {
-        ...s,
-        map: { ...s.map, scanned: e.scanned ?? 0, bytes: e.bytes ?? 0, currentPath: e.path },
-      }
-    }
-    return s
   }
 
   // Apps slice: host/app/leftovers route here, never to a TabState.
@@ -195,13 +176,33 @@ function applyEvent(s: State, e: DscanEvent): State {
   if (e.event === 'leftovers') {
     return { ...s, apps: { ...s.apps, leftovers: e.leftovers ?? [] } }
   }
-  if (s.scanningTab === 'apps') {
+
+  // Map slice: the tree event terminates the map scan.
+  if (e.event === 'tree') {
+    return { ...s, map: { ...s.map, scanning: false, tree: e.node } }
+  }
+
+  // `error` is not tab-scoped; it has no slice to update.
+  if (e.event === 'error') return s
+
+  // Everything else is tab-scoped scan progress. Route strictly by event.tab so
+  // concurrent scans on different tabs never cross-contaminate.
+  const tab = e.tab
+  if (!tab) return s
+  if (tab === 'map') {
+    if (e.event === 'progress') {
+      return {
+        ...s,
+        map: { ...s.map, scanned: e.scanned ?? 0, bytes: e.bytes ?? 0, currentPath: e.path },
+      }
+    }
+    return s
+  }
+  if (tab === 'apps') {
     if (e.event === 'scanDone') return { ...s, apps: { ...s.apps, scanning: false } }
     return s // progress during apps scan: ignore (no per-file UI)
   }
 
-  const tab = s.scanningTab ?? s.tab
-  if (tab === 'map' || tab === 'apps') return s
   const t = s[tab]
   let nt: TabState
   switch (e.event) {

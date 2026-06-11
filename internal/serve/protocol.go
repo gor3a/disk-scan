@@ -29,6 +29,7 @@ type ItemDTO struct {
 // Request is a command from the GUI (main → sidecar stdin).
 type Request struct {
 	Cmd         string   `json:"cmd"`         // scan|map|clean|trash|cancel
+	Tab         string   `json:"tab"`         // cleanup|projects|map|apps: which tab the command targets
 	Kind        string   `json:"kind"`        // scan: "caches" (default) | "projects"
 	Root        string   `json:"root"`        // scan/map: folder to search
 	Path        string   `json:"path"`        // trash: path to move to Trash
@@ -44,6 +45,7 @@ type Request struct {
 // relevant to the event are populated; the rest are omitted.
 type Event struct {
 	Event       string        `json:"event"`
+	Tab         string        `json:"tab,omitempty"` // routes the event to a GUI tab slice (empty = not tab-scoped)
 	Disk        *diskInfo     `json:"disk,omitempty"`
 	Item        *ItemDTO      `json:"item,omitempty"`
 	Scanned     int           `json:"scanned,omitempty"`

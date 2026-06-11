@@ -47,28 +47,32 @@ export interface TreeNode {
   children?: TreeNode[]
 }
 
+// EventTab routes a tab-scoped event to its slice. The backend stamps it on
+// every scan/clean event so two concurrent scans never cross-contaminate.
+export type EventTab = 'cleanup' | 'projects' | 'map' | 'apps'
+
 export type DscanEvent =
-  | { event: 'disk'; disk: Disk }
-  | { event: 'item'; item: ItemDTO }
+  | { event: 'disk'; tab?: EventTab; disk: Disk }
+  | { event: 'item'; tab?: EventTab; item: ItemDTO }
   // numeric fields are optional: Go omits them when zero (omitempty)
-  | { event: 'progress'; scanned?: number; phase?: string; bytes?: number; path?: string }
-  | { event: 'scanDone'; reclaimable?: number }
-  | { event: 'tree'; path?: string; node: TreeNode | null }
-  | { event: 'cleanResult'; freed?: number; trashed?: number; errors?: string[] }
+  | { event: 'progress'; tab?: EventTab; scanned?: number; phase?: string; bytes?: number; path?: string }
+  | { event: 'scanDone'; tab?: EventTab; reclaimable?: number }
+  | { event: 'tree'; tab?: EventTab; path?: string; node: TreeNode | null }
+  | { event: 'cleanResult'; tab?: EventTab; freed?: number; trashed?: number; errors?: string[] }
   | { event: 'error'; message: string }
-  | { event: 'host'; host: { arch: 'appleSilicon' | 'other' } }
-  | { event: 'app'; app: AppDTO }
-  | { event: 'leftovers'; path?: string; leftovers?: Leftover[] }
+  | { event: 'host'; tab?: EventTab; host: { arch: 'appleSilicon' | 'other' } }
+  | { event: 'app'; tab?: EventTab; app: AppDTO }
+  | { event: 'leftovers'; tab?: EventTab; path?: string; leftovers?: Leftover[] }
 
 export type Request =
   | { cmd: 'scan'; kind?: 'caches' | 'projects'; root?: string; system?: boolean; excludes?: string[] }
   | { cmd: 'map'; root?: string; excludes?: string[] }
-  | { cmd: 'clean'; ids: string[]; dryRun?: boolean; killLockers?: boolean }
-  | { cmd: 'trash'; path: string }
-  | { cmd: 'cancel' }
+  | { cmd: 'clean'; tab?: EventTab; ids: string[]; dryRun?: boolean; killLockers?: boolean }
+  | { cmd: 'trash'; tab?: EventTab; path: string }
+  | { cmd: 'cancel'; tab?: EventTab }
   | { cmd: 'apps' }
   | { cmd: 'appLeftovers'; path: string }
-  | { cmd: 'uninstall'; paths: string[] }
+  | { cmd: 'uninstall'; tab?: EventTab; paths: string[] }
 
 export function parseEvent(line: string): DscanEvent {
   return JSON.parse(line) as DscanEvent

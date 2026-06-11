@@ -170,7 +170,7 @@ export default function App() {
     else scanApps()
   }
   const stopCurrent = () => {
-    window.dscan.send({ cmd: 'cancel' })
+    window.dscan.send({ cmd: 'cancel', tab: s.tab })
     dispatch({ type: 'stopScan' })
   }
 
@@ -270,7 +270,7 @@ export default function App() {
     const ids = selectedIds(t.selection)
     pendingCount.current = ids.length
     dispatch({ type: 'startClean', ids })
-    window.dscan.send({ cmd: 'clean', ids, killLockers: s.tab === 'projects' })
+    window.dscan.send({ cmd: 'clean', ids, killLockers: s.tab === 'projects', tab: s.tab })
   }
   const onChangeFolder = async () => {
     const dir = await window.dscan.pickFolder()
@@ -298,7 +298,7 @@ export default function App() {
     }
   }
   const confirmTrash = () => {
-    if (trashTarget) window.dscan.send({ cmd: 'trash', path: trashTarget.path })
+    if (trashTarget) window.dscan.send({ cmd: 'trash', path: trashTarget.path, tab: s.tab })
     setTrashTarget(null)
   }
 
@@ -306,7 +306,7 @@ export default function App() {
   const onUninstallApp = (paths: string[]) => {
     pendingCount.current = 1
     dispatch({ type: 'startClean', ids: [paths[0]] }) // the app bundle's id is its path
-    window.dscan.send({ cmd: 'uninstall', paths })
+    window.dscan.send({ cmd: 'uninstall', paths, tab: 'apps' })
   }
 
   const closeModal = () => dispatch({ type: 'openModal', modal: null })
@@ -359,7 +359,7 @@ export default function App() {
         scanned={s.tab === 'map' ? s.map.scanned : t.scanned}
         bytes={s.tab === 'map' ? s.map.bytes : t.bytes}
         currentPath={s.tab === 'map' ? s.map.currentPath : t.currentPath}
-        onStop={() => window.dscan.send({ cmd: 'cancel' })}
+        onStop={() => window.dscan.send({ cmd: 'cancel', tab: s.tab })}
       />
 
       {s.tab === 'cleanup' ? (

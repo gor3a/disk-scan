@@ -169,6 +169,55 @@ func TestServeCancelStillFinishesCleanly(t *testing.T) {
 	}
 }
 
+// TestServeConcurrentScansDoNotCancelEachOther reproduces the startup race: a
+// caches (cleanup) scan immediately followed by a projects scan. Both must run
+// to completion — neither cancels the other — and every event must carry the tab
+// it belongs to so the GUI can route them to independent slices.
+func TestServeConcurrentScansDoNotCancelEachOther(t *testing.T) {
+	home := t.TempDir()
+	cache := filepath.Join(home, ".cache", "blobs")
+	if err := os.MkdirAll(cache, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cache, "b"), make([]byte, 8192), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "proj", "node_modules", "x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "proj", "node_modules", "x", "f"), make([]byte, 4096), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out strings.Builder
+	in := strings.NewReader(
+		`{"cmd":"scan"}` + "\n" +
+			`{"cmd":"scan","kind":"projects","root":"` + root + `"}` + "\n")
+	if err := Run(in, &out, "linux", home); err != nil {
+		t.Fatal(err)
+	}
+
+	doneByTab := map[string]int{}
+	for _, e := range decodeEvents(t, out.String()) {
+		switch e.Event {
+		case "scanDone":
+			doneByTab[e.Tab]++
+		case "item":
+			if e.Tab != "cleanup" && e.Tab != "projects" {
+				t.Errorf("item event has unexpected tab %q", e.Tab)
+			}
+		}
+	}
+	// Both scans completed (old single-cancel code would cancel the first).
+	if doneByTab["cleanup"] != 1 {
+		t.Errorf("want exactly one cleanup scanDone, got %d", doneByTab["cleanup"])
+	}
+	if doneByTab["projects"] != 1 {
+		t.Errorf("want exactly one projects scanDone, got %d", doneByTab["projects"])
+	}
+}
+
 func TestServeScanProjects(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "proj", "node_modules", "x"), 0o755); err != nil {
