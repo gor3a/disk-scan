@@ -10,6 +10,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Release scripts (`scripts/release.sh`, `scripts/publish.sh`) that automate the
   version bump, CHANGELOG promotion, tagging, and release publishing.
+- Repository governance — `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`,
+  and GitHub pull-request / issue templates.
+- A `shellcheck` lint workflow and `scripts/lint.sh`.
 
 ## [0.6.0] - 2026-06-10
 
