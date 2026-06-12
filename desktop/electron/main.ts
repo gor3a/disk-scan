@@ -172,7 +172,9 @@ function createWindow() {
 
   // powersched: poll the CLI for jobs and push them to the Schedule tab.
   if (!psPoller) {
-    psPoller = new Poller(psBridge, (jobs) => win?.webContents.send('ps:jobs', jobs))
+    psPoller = new Poller(psBridge, (jobs) => {
+      if (win && !win.isDestroyed()) win.webContents.send('ps:jobs', jobs)
+    })
     psPoller.start()
   }
 
@@ -291,5 +293,6 @@ ipcMain.handle('dscan:pickFolder', async () => {
 app.whenReady().then(createWindow)
 app.on('window-all-closed', () => {
   sidecar?.stop()
+  psPoller?.stop()
   app.quit()
 })

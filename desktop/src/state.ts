@@ -130,6 +130,7 @@ export function reduce(s: State, a: Action): State {
       // flag. (A cancel may not produce a terminal event, so we settle the UI.)
       if (s.tab === 'map') return { ...s, map: { ...s.map, scanning: false } }
       if (s.tab === 'apps') return { ...s, apps: { ...s.apps, scanning: false } }
+      if (s.tab === 'schedule') return s
       return setTabState(s, s.tab, { ...activeTab(s), scanning: false })
     case 'startClean':
       return { ...s, pendingCleanIds: a.ids }
@@ -138,7 +139,7 @@ export function reduce(s: State, a: Action): State {
       // selection model (apps uses local component state), and activeTab() falls
       // back to the cleanup slice for them — so writing it back here would
       // clobber s.apps/s.map with a TabState. Ignore.
-      if (s.tab === 'map' || s.tab === 'apps') return s
+      if (s.tab === 'map' || s.tab === 'apps' || s.tab === 'schedule') return s
       return setTabState(s, s.tab, { ...activeTab(s), selection: a.selection })
     case 'setSettings':
       return { ...s, settings: a.settings }
