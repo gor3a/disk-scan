@@ -126,10 +126,22 @@ function createWindow() {
       preload: join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
     },
   })
   registerWindowControls(win)
   blockBrowserShortcuts(win.webContents)
+  // Navigation lockdown — this app only shows its own local content, and the
+  // Schedule tab can drive a root CLI, so deny new windows and any navigation
+  // away from the loaded document. External links go through shell.openExternal.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https://')) shell.openExternal(url)
+    return { action: 'deny' }
+  })
+  win.webContents.on('will-navigate', (e, url) => {
+    const dev = process.env.VITE_DEV_SERVER_URL
+    if (!(dev && url.startsWith(dev))) e.preventDefault()
+  })
   win.once('ready-to-show', () => {
     const wait = Math.max(0, SPLASH_MIN_MS - (Date.now() - shownAt))
     setTimeout(() => {
