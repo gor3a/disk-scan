@@ -27,6 +27,7 @@ export function Tabs({
       {item('projects', 'Projects')}
       {item('map', 'Map')}
       {showApps && item('apps', 'Apps')}
+      {item('schedule', 'Schedule')}
     </div>
   )
 }

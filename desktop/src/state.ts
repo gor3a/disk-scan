@@ -1,7 +1,7 @@
 import type { DscanEvent, Disk, ItemDTO, TreeNode, AppDTO, Leftover } from './lib/protocol'
 import type { Selection } from './lib/selection'
 
-export type Tab = 'cleanup' | 'projects' | 'map' | 'apps'
+export type Tab = 'cleanup' | 'projects' | 'map' | 'apps' | 'schedule'
 
 export interface Settings {
   staleDays: number
@@ -103,7 +103,8 @@ export function initialState(): State {
 // TabState (it uses the `map` slice); callers gate on `tab` and never render
 // TabState-driven UI on Map, so a cleanup placeholder is harmless here.
 export function activeTab(s: State): TabState {
-  return s.tab === 'map' || s.tab === 'apps' ? s.cleanup : s[s.tab]
+  // map/apps/schedule have no per-tab scan slice; return a harmless placeholder.
+  return s.tab === 'map' || s.tab === 'apps' || s.tab === 'schedule' ? s.cleanup : s[s.tab]
 }
 
 function setTabState(s: State, tab: Tab, t: TabState): State {
@@ -154,7 +155,7 @@ function applyEvent(s: State, e: DscanEvent): State {
   if (e.event === 'cleanResult') {
     const result = { freed: e.freed ?? 0, trashed: e.trashed ?? 0, errors: e.errors ?? [] }
     const tab = e.tab ?? s.tab
-    if (tab === 'map') return { ...s, pendingCleanIds: [], result }
+    if (tab === 'map' || tab === 'schedule') return { ...s, pendingCleanIds: [], result }
     if (tab === 'apps') {
       const cleaned = new Set(s.pendingCleanIds)
       const apps = s.apps.apps.filter((a) => !cleaned.has(a.id))

@@ -15,10 +15,27 @@ import { createSplash } from './splash'
 import { Store } from './store'
 import { applySchedule, type Cadence } from './schedule'
 import { initUpdater } from './updater'
+import { CommandBridge } from './ps-bridge'
+import { Poller } from './ps-poller'
 import type { Request } from '../src/lib/protocol'
+import type { ScheduleRequest } from '../src/lib/powersched'
 import { matchesAppName } from '../src/lib/apps'
 
 const SPLASH_MIN_MS = 1100 // keep the brand moment visible even on fast loads
+
+// resolvePowersched: the powersched CLI driven by the Schedule tab. Because it
+// runs AS ROOT via native elevation, a caller-supplied path is a privesc
+// primitive — so packaged builds use ONLY the bundled resource and ignore the
+// POWERSCHED_BIN env override (a dev-only convenience).
+function resolvePowersched(): string {
+  if (app.isPackaged) return join(process.resourcesPath, 'powersched', 'powersched')
+  if (process.env.POWERSCHED_BIN) return process.env.POWERSCHED_BIN
+  // dev: the CLI lives in the dotai monorepo, two repos up from desktop/.
+  return join(__dirname, '..', '..', '..', 'scripts', 'powersched', 'powersched')
+}
+const psBin = resolvePowersched()
+const psBridge = new CommandBridge(psBin)
+let psPoller: Poller | null = null
 
 // resolveSidecar: when packaged, use the binary shipped under resources/ by
 // electron-builder; in dev, use the repo-built `desktop/dscan-dev` binary.
@@ -153,8 +170,33 @@ function createWindow() {
   sidecar.on('event', (e) => win?.webContents.send('dscan:event', e))
   sidecar.start()
 
+  // powersched: poll the CLI for jobs and push them to the Schedule tab.
+  if (!psPoller) {
+    psPoller = new Poller(psBridge, (jobs) => win?.webContents.send('ps:jobs', jobs))
+    psPoller.start()
+  }
+
   initUpdater(win)
 }
+
+// --- powersched IPC (Schedule tab) -------------------------------------------
+ipcMain.handle('ps:list', () => psBridge.list())
+ipcMain.handle('ps:schedule', async (_e, req: ScheduleRequest) => {
+  const r = await psBridge.schedule(req)
+  await psPoller?.refresh()
+  return r
+})
+ipcMain.handle('ps:cancel', async (_e, id: string) => {
+  const r = await psBridge.cancel(id)
+  await psPoller?.refresh()
+  return r
+})
+ipcMain.handle('ps:abort', async (_e, id: string) => {
+  const r = await psBridge.abort(id)
+  await psPoller?.refresh()
+  return r
+})
+ipcMain.handle('ps:health', () => ({ path: psBin, found: existsSync(psBin) }))
 
 ipcMain.on('dscan:send', (_e, req: Request) => sidecar?.send(req))
 

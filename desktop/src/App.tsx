@@ -13,6 +13,7 @@ import { ScanLine } from './components/ScanLine'
 import { ProjectsView } from './components/ProjectsView'
 import { MapView } from './components/MapView'
 import { AppsView } from './components/AppsView'
+import { ScheduleView } from './components/schedule/ScheduleView'
 import { UpdateBanner } from './components/UpdateBanner'
 import { Modal } from './components/Modal'
 import type { UpdateStatus } from './lib/update'
@@ -22,7 +23,7 @@ import { Menu } from './components/Menu'
 import { AboutModal } from './components/AboutModal'
 import { UninstallModal } from './components/UninstallModal'
 import { SettingsModal } from './components/SettingsModal'
-import type { DscanEvent, Request, Tier, ItemDTO, TreeNode } from './lib/protocol'
+import type { DscanEvent, Request, Tier, ItemDTO, TreeNode, EventTab } from './lib/protocol'
 
 const KOFI = 'https://ko-fi.com/gor3a'
 const CONTACT = 'https://minasameh.com/contact'
@@ -76,7 +77,7 @@ export default function App() {
   const pendingCount = useRef(0)
   const lastResult = useRef<CleanResult | undefined>(undefined)
   // Auto-selection follows incoming items until the user manually toggles.
-  const touched = useRef<Record<Tab, boolean>>({ cleanup: false, projects: false, map: false, apps: false })
+  const touched = useRef<Record<Tab, boolean>>({ cleanup: false, projects: false, map: false, apps: false, schedule: false })
   const [trashTarget, setTrashTarget] = useState<TreeNode | null>(null)
 
   const [menuOpen, setMenuOpen] = useState(false)
@@ -162,22 +163,28 @@ export default function App() {
 
   const showApps = platform === 'darwin' && s.apps.hostAppleSilicon
   const currentScanning =
-    s.tab === 'map' ? s.map.scanning : s.tab === 'apps' ? s.apps.scanning : activeTab(s).scanning
+    s.tab === 'map'
+      ? s.map.scanning
+      : s.tab === 'apps'
+        ? s.apps.scanning
+        : s.tab === 'schedule'
+          ? false
+          : activeTab(s).scanning
   const reloadCurrent = () => {
     if (s.tab === 'cleanup') scanCleanup()
     else if (s.tab === 'projects') scanProjects(projectsRoot.current)
     else if (s.tab === 'map') scanMap(mapRoot.current)
-    else scanApps()
+    else if (s.tab === 'apps') scanApps()
   }
   const stopCurrent = () => {
-    window.dscan.send({ cmd: 'cancel', tab: s.tab })
+    window.dscan.send({ cmd: 'cancel', tab: s.tab as EventTab })
     dispatch({ type: 'stopScan' })
   }
 
   // App keyboard shortcuts. Browser defaults (⌘R reload, devtools, zoom) are
   // disabled in the main process, so ⌘R is free to mean "rescan" here.
   useEffect(() => {
-    const tabs: Tab[] = ['cleanup', 'projects', 'map', ...(showApps ? (['apps'] as Tab[]) : [])]
+    const tabs: Tab[] = ['cleanup', 'projects', 'map', ...(showApps ? (['apps'] as Tab[]) : []), 'schedule']
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey
       if (mod && e.key.toLowerCase() === 'r') {
@@ -235,7 +242,8 @@ export default function App() {
   // Re-derive the default selection as items stream in / the threshold changes,
   // until the user manually toggles this tab.
   useEffect(() => {
-    if (s.tab === 'map' || s.tab === 'apps' || touched.current[s.tab] || items.length === 0) return
+    if (s.tab === 'map' || s.tab === 'apps' || s.tab === 'schedule' || touched.current[s.tab] || items.length === 0)
+      return
     setSelection(
       s.tab === 'projects'
         ? staleSelection(items, nowSecs(), s.settings.staleDays)
@@ -270,7 +278,7 @@ export default function App() {
     const ids = selectedIds(t.selection)
     pendingCount.current = ids.length
     dispatch({ type: 'startClean', ids })
-    window.dscan.send({ cmd: 'clean', ids, killLockers: s.tab === 'projects', tab: s.tab })
+    window.dscan.send({ cmd: 'clean', ids, killLockers: s.tab === 'projects', tab: s.tab as EventTab })
   }
   const onChangeFolder = async () => {
     const dir = await window.dscan.pickFolder()
@@ -298,7 +306,7 @@ export default function App() {
     }
   }
   const confirmTrash = () => {
-    if (trashTarget) window.dscan.send({ cmd: 'trash', path: trashTarget.path, tab: s.tab })
+    if (trashTarget) window.dscan.send({ cmd: 'trash', path: trashTarget.path, tab: s.tab as EventTab })
     setTrashTarget(null)
   }
 
@@ -346,20 +354,24 @@ export default function App() {
       <div className="flex items-end justify-between pr-5">
         <Tabs tab={s.tab} onTab={(tab: Tab) => dispatch({ type: 'setTab', tab })} showApps={showApps} />
         <div className="pb-1">
-          <RescanButton scanning={currentScanning} onReload={reloadCurrent} onStop={stopCurrent} />
+          {s.tab !== 'schedule' && (
+            <RescanButton scanning={currentScanning} onReload={reloadCurrent} onStop={stopCurrent} />
+          )}
         </div>
       </div>
 
-      {s.tab !== 'map' && s.tab !== 'apps' && (
+      {s.tab !== 'map' && s.tab !== 'apps' && s.tab !== 'schedule' && (
         <HeroBar reclaimable={selectedTotal(items, t.selection)} disk={t.disk} onClean={doClean} />
       )}
       <ScanLine
-        scanning={s.tab === 'map' ? s.map.scanning : s.tab === 'apps' ? false : t.scanning}
+        scanning={
+          s.tab === 'map' ? s.map.scanning : s.tab === 'apps' || s.tab === 'schedule' ? false : t.scanning
+        }
         phase={s.tab === 'map' ? 'map' : t.phase}
         scanned={s.tab === 'map' ? s.map.scanned : t.scanned}
         bytes={s.tab === 'map' ? s.map.bytes : t.bytes}
         currentPath={s.tab === 'map' ? s.map.currentPath : t.currentPath}
-        onStop={() => window.dscan.send({ cmd: 'cancel', tab: s.tab })}
+        onStop={() => window.dscan.send({ cmd: 'cancel', tab: s.tab as EventTab })}
       />
 
       {s.tab === 'cleanup' ? (
@@ -399,7 +411,7 @@ export default function App() {
           onExclude={onMapExclude}
           onTrash={(node) => setTrashTarget(node)}
         />
-      ) : (
+      ) : s.tab === 'apps' ? (
         <AppsView
           apps={s.apps.apps}
           scanning={s.apps.scanning}
@@ -409,6 +421,8 @@ export default function App() {
           onRequestLeftovers={onRequestLeftovers}
           onUninstall={onUninstallApp}
         />
+      ) : (
+        <ScheduleView />
       )}
 
       {s.result && (
