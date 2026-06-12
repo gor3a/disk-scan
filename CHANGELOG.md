@@ -6,6 +6,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Schedule tab.** Schedule **shutdown / sleep / restart / wake** on a timer —
+  relative (`in 2h`), absolute (`at 23:00`), or recurring (daily / weekday /
+  specific days), with an optional **force** (override blocked shutdowns), a
+  **wake** companion, and a notified grace period you can abort. Jobs survive
+  logout and reboot (launchd on macOS, systemd on Linux) and show a live
+  countdown; cancel or abort any of them. Privileged actions use a native
+  per-action authorization prompt (Touch ID / password on macOS, polkit on
+  Linux). It's a thin front-end over the bundled `powersched` CLI.
+
 ## [0.7.0] - 2026-06-11
 
 ### Fixed

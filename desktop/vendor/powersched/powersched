@@ -1,0 +1,271 @@
+#!/bin/bash
+# powersched — schedule shutdown / sleep / restart / wake on macOS + Linux.
+#
+# Usage:
+#   powersched shutdown in 2h [--force] [--wake-at HH:MM] [--grace N]
+#   powersched sleep at 23:00
+#   powersched restart at 2026-06-12 01:30
+#   powersched wake at 07:00 [--power-on]
+#   powersched shutdown every day at 01:00 [--force]
+#   powersched list
+#   powersched cancel <id> | cancel all
+#   powersched abort [<id>|all]
+#
+# Actions survive terminal close / logout / reboot (launchd on macOS, systemd
+# on Linux). A notified action warns the desktop user and waits a grace period
+# (default 120s, `--grace`) before firing; run `powersched abort` to cancel it.
+# Graceful by default; `--force` overrides app/inhibitor blocks.
+
+set -euo pipefail
+
+# --- locate ourselves + load libs ---------------------------------------------
+SELF="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+LIB="${SELF}/lib"
+FIRE_RUNNER="${SELF}/fire-runner.sh"
+
+# shellcheck source=lib/common.sh
+source "${LIB}/common.sh"
+# shellcheck source=lib/dateutil.sh
+source "${LIB}/dateutil.sh"
+# shellcheck source=lib/parse-timespec.sh
+source "${LIB}/parse-timespec.sh"
+# shellcheck source=lib/registry.sh
+source "${LIB}/registry.sh"
+
+case "$POWERSCHED_BACKEND" in
+    macos) source "${LIB}/backend-macos.sh" ;;
+    linux) source "${LIB}/backend-linux.sh" ;;
+    mock)  source "${LIB}/backend-mock.sh" ;;
+    *)     ps_die "unsupported platform (uname: $(uname -s)); set POWERSCHED_BACKEND" ;;
+esac
+
+# --- helpers ------------------------------------------------------------------
+usage() { sed -n '2,30p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+
+# Re-exec under sudo for privileged operations (writing system schedulers).
+# Called from main() with the ORIGINAL argv so the command re-runs intact.
+ensure_root() {
+    [[ "$POWERSCHED_BACKEND" == "mock" ]] && return 0   # tests never elevate
+    if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
+        command -v sudo >/dev/null 2>&1 || ps_die "this operation needs root and sudo is not available"
+        ps_info "elevating with sudo…"
+        # Deliberately do NOT preserve POWERSCHED_STATE_DIR: the privileged
+        # process must use the hardcoded system state dir, never a caller-
+        # supplied path (which would let an unprivileged caller steer root's
+        # registry reads and file removals).
+        exec sudo --preserve-env=POWERSCHED_GRACE_DEFAULT "$0" "$@"
+    fi
+}
+
+# Build a friendly, unique job id from action + time fields.
+make_id() {
+    local action="$1" tag="$2" base id n
+    base="${action}-${tag}"
+    id="$base"; n=2
+    while reg_exists "$id"; do id="${base}-${n}"; n=$((n + 1)); done
+    printf '%s\n' "$id"
+}
+
+# Copy the runtime (fire-runner + lib) to a system-readable path and echo the
+# staged fire-runner path. The in-repo path under ~/Documents is unreadable by
+# root daemons on macOS (TCC), so the scheduler must point at this copy.
+stage_runtime() {
+    [[ "$POWERSCHED_BACKEND" == "mock" ]] && { printf '%s\n' "$FIRE_RUNNER"; return 0; }
+    local dst="$POWERSCHED_RUNTIME_DIR"
+    mkdir -p "$dst/lib" || return 1
+    cp "$SELF/fire-runner.sh" "$dst/fire-runner.sh" || return 1
+    cp "$SELF"/lib/*.sh "$dst/lib/" || return 1
+    chmod 755 "$dst" "$dst/lib" "$dst/fire-runner.sh"
+    printf '%s\n' "$dst/fire-runner.sh"
+}
+
+# Parse a wake-time spec (HH:MM or "YYYY-MM-DD HH:MM") -> epoch.
+parse_wake_at() {
+    local out
+    out=$(parse_timespec "at $1") || return 1
+    [[ "$out" == *"kind=oneshot"* ]] || return 1
+    grep '^when=' <<<"$out" | cut -d= -f2
+}
+
+# --- subcommands --------------------------------------------------------------
+cmd_schedule() {
+    local action="$1"; shift
+    local force=false grace="$POWERSCHED_GRACE_DEFAULT" wake_spec="" power_on=false
+    local -a spec_parts=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --force)    force=true; shift ;;
+            --power-on) power_on=true; shift ;;
+            --grace)    grace="${2:?--grace needs a value}"; shift 2 ;;
+            --wake-at)  wake_spec="${2:?--wake-at needs a time}"; shift 2 ;;
+            --)         shift; break ;;
+            -*)         ps_die "unknown flag: $1" ;;
+            *)          spec_parts+=("$1"); shift ;;
+        esac
+    done
+    local spec="${spec_parts[*]:-}"
+    [[ -n "$spec" ]] || ps_die "missing time spec (e.g. 'in 2h', 'at 23:00', 'every day at 01:00')"
+    [[ "$grace" =~ ^[0-9]+$ ]] || ps_die "--grace must be an integer number of seconds"
+
+    # Resolve the schedule time.
+    local parsed kind when when_norm tag hh mm days
+    parsed=$(parse_timespec "$spec") || exit 1   # parse_timespec already explained the error
+    kind=$(grep '^kind=' <<<"$parsed" | cut -d= -f2)
+    if [[ "$kind" == "oneshot" ]]; then
+        when=$(grep '^when=' <<<"$parsed" | cut -d= -f2)
+        when_norm="$when"
+        tag=$(du_fmt "$when" "%H%M")
+    else
+        hh=$(grep '^hh=' <<<"$parsed" | cut -d= -f2)
+        mm=$(grep '^mm=' <<<"$parsed" | cut -d= -f2)
+        days=$(grep '^days=' <<<"$parsed" | cut -d= -f2)
+        when_norm="${hh}:${mm}:${days}"
+        tag="${hh}${mm}"
+    fi
+
+    # Resolve optional wake-at.
+    local wake_at="-"
+    if [[ -n "$wake_spec" ]]; then
+        [[ "$action" == "shutdown" || "$action" == "sleep" ]] || \
+            ps_die "--wake-at only applies to shutdown/sleep"
+        wake_at=$(parse_wake_at "$wake_spec") || ps_die "bad --wake-at time: '$wake_spec'"
+    fi
+    # `wake --power-on` flag is just folded into the action for the backend.
+    [[ "$action" == "wake" && "$power_on" == true ]] && action="wake-poweron"
+
+    backend_check_deps || exit 1
+
+    local id handle created staged_fr
+    staged_fr=$(stage_runtime) || ps_die "failed to stage runtime to $POWERSCHED_RUNTIME_DIR"
+    id=$(make_id "$action" "$tag")
+    created=$(du_now)
+    handle=$(backend_schedule "$id" "$action" "$kind" "$when_norm" "$force" "$wake_at" "$grace" "$staged_fr") \
+        || ps_die "failed to schedule with $POWERSCHED_BACKEND backend"
+    reg_add "$id" "$action" "$force" "$kind" "$when_norm" "$handle" "$wake_at" "$created" "$spec" "$grace"
+
+    if [[ "$kind" == "oneshot" ]]; then
+        ps_info "scheduled '$id': $action $(du_fmt "$when" '%Y-%m-%d %H:%M') (force=$force)"
+    else
+        ps_info "scheduled '$id': $action every $days at ${hh}:${mm} (force=$force)"
+    fi
+    if [[ "$wake_at" != "-" ]]; then
+        ps_info "  will program wake for $(du_fmt "$wake_at" '%Y-%m-%d %H:%M')"
+    fi
+    return 0
+}
+
+# Drop one-shot jobs whose fire-plus-grace window has fully passed (fired and
+# left a row, or missed because the machine was off). Recurring jobs are never
+# stale. The +30s slack keeps a job that is firing right now from being reaped.
+reconcile_stale() {
+    [[ -f "$POWERSCHED_REGISTRY" ]] || return 0
+    local now id action _force kind when handle _wake _created _spec grace
+    now=$(du_now)
+    while IFS=$'\t' read -r id action _force kind when handle _wake _created _spec grace; do
+        [[ -z "$id" || "$kind" != "oneshot" ]] && continue
+        [[ "$when" =~ ^[0-9]+$ ]] || continue
+        [[ "$grace" =~ ^[0-9]+$ ]] || grace=120
+        if (( now > when + grace + 30 )); then
+            backend_cancel "$id" "$handle" "$action" "$kind" >/dev/null 2>&1 || true
+            reg_remove "$id" || true
+        fi
+    done <"$POWERSCHED_REGISTRY"
+}
+
+# Minimal JSON string escape (backslash + double-quote; fields hold no controls).
+json_esc() { local s="$1"; s="${s//\\/\\\\}"; s="${s//\"/\\\"}"; printf '%s' "$s"; }
+
+# Emit the registry as a JSON array (machine-readable, for the GUI). No root
+# needed. nextFire/countdown are computed by the consumer from kind+when.
+cmd_list_json() {
+    reg_init 2>/dev/null || true
+    local rows; rows=$(reg_all)
+    local first=1 id action force kind when handle wake created spec grace wj fj
+    printf '['
+    while IFS=$'\t' read -r id action force kind when handle wake created spec grace; do
+        [[ -z "$id" ]] && continue
+        if [[ $first -eq 1 ]]; then first=0; else printf ','; fi
+        if [[ "$wake" == "-" || -z "$wake" ]]; then wj="null"; else wj="$wake"; fi
+        [[ "$force" == "true" ]] && fj="true" || fj="false"
+        [[ "$grace" =~ ^[0-9]+$ ]] || grace=120
+        printf '{"id":"%s","action":"%s","force":%s,"kind":"%s","when":"%s","wakeAt":%s,"grace":%s,"spec":"%s"}' \
+            "$(json_esc "$id")" "$(json_esc "$action")" "$fj" "$(json_esc "$kind")" \
+            "$(json_esc "$when")" "$wj" "$grace" "$(json_esc "$spec")"
+    done <<<"$rows"
+    printf ']\n'
+}
+
+cmd_list() {
+    if [[ "${1:-}" == "--json" ]]; then cmd_list_json; return $?; fi
+    reg_init 2>/dev/null || true
+    reconcile_stale
+    local rows; rows=$(reg_all)
+    if [[ -z "$rows" ]]; then ps_info "no scheduled jobs"; return 0; fi
+    printf '%-22s %-14s %-7s %-10s %s\n' "ID" "ACTION" "FORCE" "KIND" "WHEN"
+    local id action force kind when spec disp
+    while IFS=$'\t' read -r id action force kind when _handle _wake _created spec _grace; do
+        [[ -z "$id" ]] && continue
+        if [[ "$kind" == "oneshot" ]]; then
+            disp=$(du_fmt "$when" '%Y-%m-%d %H:%M' 2>/dev/null || echo "$when")
+        else
+            disp="$spec"
+        fi
+        printf '%-22s %-14s %-7s %-10s %s\n' "$id" "$action" "$force" "$kind" "$disp"
+    done <<<"$rows"
+}
+
+cmd_cancel() {
+    local target="${1:?usage: powersched cancel <id|all>}"
+    reg_init 2>/dev/null || true
+    local id action kind handle ids
+    if [[ "$target" == "all" ]]; then
+        ids=$(reg_ids)
+        [[ -z "$ids" ]] && { ps_info "no jobs to cancel"; return 0; }
+    else
+        reg_exists "$target" || ps_die "no such job: $target"
+        ids="$target"
+    fi
+    while IFS= read -r id; do
+        [[ -z "$id" ]] && continue
+        local row; row=$(reg_get "$id") || continue
+        action=$(reg_field "$row" 2)
+        kind=$(reg_field "$row" 4)
+        handle=$(reg_field "$row" 6)
+        backend_cancel "$id" "$handle" "$action" "$kind" || ps_warn "backend cancel reported an issue for $id"
+        reg_remove "$id" || true
+        ps_info "cancelled '$id'"
+    done <<<"$ids"
+}
+
+cmd_abort() {
+    local target="${1:-all}"
+    reg_init 2>/dev/null || true
+    local ids id
+    if [[ "$target" == "all" ]]; then
+        ids=$(reg_ids)
+        [[ -z "$ids" ]] && { ps_info "no scheduled jobs to abort"; return 0; }
+    else
+        reg_exists "$target" || ps_die "no such job: $target"
+        ids="$target"
+    fi
+    while IFS= read -r id; do
+        [[ -z "$id" ]] && continue
+        : >"$(ps_abort_flag "$id")"
+    done <<<"$ids"
+    ps_info "abort signalled for: $(tr '\n' ' ' <<<"$ids")— any in-progress grace countdown will cancel"
+}
+
+# --- main ---------------------------------------------------------------------
+main() {
+    local cmd="${1:-help}"
+    case "$cmd" in
+        shutdown|sleep|restart|wake) ensure_root "$@"; cmd_schedule "$@" ;;
+        list)   shift; cmd_list "$@" ;;
+        cancel) ensure_root "$@"; shift; cmd_cancel "$@" ;;
+        abort)  ensure_root "$@"; shift; cmd_abort "$@" ;;
+        help|-h|--help) usage ;;
+        *) ps_err "unknown command: $cmd"; usage; exit 1 ;;
+    esac
+}
+
+main "$@"

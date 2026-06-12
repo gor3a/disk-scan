@@ -56,6 +56,8 @@ Highlights:
 | ![Clean up — caches & build output by safety tier](assets/dscan-cleanup.png) | ![Projects — heavy build artifacts grouped by kind](assets/dscan-projects.png) |
 | **Map** | **Apps** |
 | ![Map — visual disk-usage treemap](assets/dscan-map.png) | ![Apps — architecture audit on Apple Silicon](assets/dscan-apps.png) |
+| **Schedule** | |
+| ![Schedule — shutdown / sleep / restart / wake on a timer](assets/dscan-schedule.png) | |
 
 ## Command line
 

@@ -30,8 +30,8 @@ const SPLASH_MIN_MS = 1100 // keep the brand moment visible even on fast loads
 function resolvePowersched(): string {
   if (app.isPackaged) return join(process.resourcesPath, 'powersched', 'powersched')
   if (process.env.POWERSCHED_BIN) return process.env.POWERSCHED_BIN
-  // dev: the CLI lives in the dotai monorepo, two repos up from desktop/.
-  return join(__dirname, '..', '..', '..', 'scripts', 'powersched', 'powersched')
+  // dev: use the vendored copy (same one that ships), under desktop/vendor.
+  return join(__dirname, '..', 'vendor', 'powersched', 'powersched')
 }
 const psBin = resolvePowersched()
 const psBridge = new CommandBridge(psBin)

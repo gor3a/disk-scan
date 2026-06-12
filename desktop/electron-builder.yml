@@ -14,14 +14,11 @@ files:
 extraResources:
   - from: resources/dscan
     to: dscan
-  # powersched CLI (Schedule tab) — bundled from the dotai monorepo; resolved at
-  # runtime under resources/powersched by main's resolvePowersched().
-  - from: ../../scripts/powersched
+  # powersched CLI (Schedule tab). Vendored under desktop/vendor/powersched so CI
+  # (which only checks out this repo) can bundle it. Re-sync from the source repo
+  # with scripts/sync-powersched.sh. Resolved at runtime under resources/powersched.
+  - from: vendor/powersched
     to: powersched
-    filter:
-      - powersched
-      - fire-runner.sh
-      - lib/**
 mac:
   # Two arch-specific dmgs (Apple Silicon + Intel). Each bundles the same fat
   # (universal) Go sidecar, which runs on either — avoiding a brittle
